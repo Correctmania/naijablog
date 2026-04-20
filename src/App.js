@@ -92,7 +92,7 @@ function Toast({ msg, type }) {
 }
 
 function Header({ page, setPage, search, setSearch, isAdmin, onAdminClick, articleCount }) {
-  const [menuOpen, setMenuOpen] = useState(false);
+ 
   return (
     <header style={{ background: "#0d0d0d", color: "#fff", borderBottom: "3px solid #e63946", position: "sticky", top: 0, zIndex: 100 }}>
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 42, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
