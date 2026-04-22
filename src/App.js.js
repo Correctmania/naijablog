@@ -499,7 +499,7 @@ function AdminPanel({ articles, onSave, onDelete, onClose }) {
     setSaving(true); await onSave(form, editing?.id); setSaving(false); setView("list");
   };
 
-  const Inp = ({ label, k, rows }) => (
+  const Inp = React.memo(({ label, k, rows }) => (
     <div style={{ marginBottom: 14 }}>
       <label style={{ fontSize: 10, fontWeight: 700, color: "#666", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 4 }}>{label}</label>
       {rows
