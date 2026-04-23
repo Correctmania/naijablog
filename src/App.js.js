@@ -88,7 +88,7 @@ function Header({ page, setPage, search, setSearch, isAdmin, onAdminClick }) {
   return (
     <header style={{ background: "#0d0d0d", color: "#fff", borderBottom: "3px solid #e63946", position: "sticky", top: 0, zIndex: 100 }}>
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 42, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-        <div style={{ fontSize: 10, color: "#555", letterSpacing: "0.06em" }}>NIGERIA'S DIGITAL NEWSROOM</div>
+        <div style={{ fontSize: 10, color: "#555", letterSpacing: "0.06em" }}>{new Date().toLocaleDateString("en-NG", { weekday: "long", year: "numeric", month: "long", day: "numeric" }).toUpperCase()} · L</div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {!isSupabaseConnected && <span style={{ fontSize: 9, color: "#e63946", fontWeight: 700, letterSpacing: "0.1em" }}>⚠ DEMO MODE</span>}
           <button onClick={onAdminClick} style={{ background: "none", border: "1px solid #2a2a2a", color: "#666", padding: "3px 10px", borderRadius: "1px", cursor: "pointer", fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>
@@ -101,7 +101,7 @@ function Header({ page, setPage, search, setSearch, isAdmin, onAdminClick }) {
           <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 40, fontWeight: 900, lineHeight: 1, color: "#fff" }}>
             Naija<span style={{ color: "#e63946" }}>Today</span>
           </div>
-          <div style={{ fontSize: 9, color: "#444", letterSpacing: "0.2em", textTransform: "uppercase", marginTop: 3 }}>Nigeria's Digital Newsroom</div>
+          <div style={{ fontSize: 9, color: "#444", letterSpacing: "0.2em", textTransform: "uppercase", marginTop: 3 }}>{new Date().toLocaleDateString("en-NG", { weekday: "long", year: "numeric", month: "long", day: "numeric" }).toUpperCase()} · L</div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {page === "Home" && (
