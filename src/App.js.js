@@ -109,8 +109,7 @@ function Header({ page, setPage, search, setSearch, isAdmin, onAdminClick, artic
         <div onClick={() => setPage("Home")} style={{ cursor: "pointer" }}>
           <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 40, fontWeight: 900, lineHeight: 1, color: "#fff" }}>
             Naija<span style={{ color: "#e63946" }}>Today</span>
-          </div>
-          <div style={{ fontSize: 9, color: "#444", letterSpacing: "0.2em", textTransform: "uppercase", marginTop: 3 }}>Nigeria's Digital Newsroom</div>
+    
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {page === "Home" && (
