@@ -3,15 +3,15 @@ import { useState, useEffect } from "react";
 // ─────────────────────────────────────────────────────────────
 // SUPABASE CONFIG — replace with yours from supabase.com
 // ─────────────────────────────────────────────────────────────
-const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
+const SUPABASE_URL = "https://szzflseeqnhjphmooqfp.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6emZsc2VlcW5oanBobW9vcWZwIiwicm9sZSI6ImFub24iLCJpYXQiOj";
 const ADMIN_PASSWORD = "naija2026"; // ← change this!
 const SITE_EMAIL = "contact@naijablog.com.ng"; // ← change this!
 const SITE_NAME = "NaijaToday";
 const SITE_DOMAIN = "naijablog.com.ng"; // ← change this!
 
 
-const isSupabaseConnected = SUPABASE_URL !== "https://YOUR_PROJECT.supabase.co";
+const isSupabaseConnected = SUPABASE_URL !== "https://szzflseeqnhjphmooqfp.supabase.co";
 
 const sb = {
   async getArticles() {
