@@ -11,7 +11,7 @@ const SITE_NAME = "NaijaToday";
 const SITE_DOMAIN = "naijablog.com.ng"; // ← change this!
 
 
-const isSupabaseConnected = SUPABASE_URL !== "https://szzflseeqnhjphmooqfp.supabase.co";
+const isSupabaseConnected = true;
 
 const sb = {
   async getArticles() {
