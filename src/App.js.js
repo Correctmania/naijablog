@@ -10,7 +10,7 @@ const SITE_EMAIL = "contact@naijablog.com.ng";
 const SITE_NAME = "NaijaBlog";
 const SITE_DOMAIN = "naijablog.com.ng";
 
-const isSupabaseConnected = true;
+
 
 const sb = {
   async getArticles() {
@@ -90,7 +90,7 @@ function Header({ page, setPage, search, setSearch, isAdmin, onAdminClick }) {
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 42, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
         <div style={{ fontSize: 10, color: "#555", letterSpacing: "0.06em" }}>NIGERIA'S DIGITAL NEWSROOM</div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {!isSupabaseConnected && <span style={{ fontSize: 9, color: "#e63946", fontWeight: 700, letterSpacing: "0.1em" }}>⚠ DEMO MODE</span>}
+          span>}
           <button onClick={onAdminClick} style={{ background: "none", border: "1px solid #2a2a2a", color: "#666", padding: "3px 10px", borderRadius: "1px", cursor: "pointer", fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>
             {isAdmin ? "⚙ Dashboard" : "Admin"}
           </button>
