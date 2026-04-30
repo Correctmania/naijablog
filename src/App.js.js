@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 // —————————————————————————————————————————————————————————————
-// SUPABASE CONFIG — replace with yours from supabase.com
+// SUPABASE CONFIG
 // —————————————————————————————————————————————————————————————
 const SUPABASE_URL = "https://szzflseeqnhjphmooqfp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6emZsc2VlcW5oanBobW9vcWZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0NTY5NjIsImV4cCI6MjA2MTAzMjk2Mn0.eyJpc3MiOiJzdXBhYmFzZSJ9";
@@ -43,49 +43,484 @@ const sb = {
   },
 };
 
-// ... (Rest of the helper functions and UI components remain the same)import { useState, useEffect, useRef } from "react";
+const CATEGORIES = ["Economy", "Politics", "Sports", "Entertainment", "Technology", "Health"];
+const NAV_PAGES = ["Home", "About", "Contact", "Privacy Policy"];
+const CAT_COLORS = { Economy: "#40916c", Politics: "#9b2226", Sports: "#e63946", Entertainment: "#e07a5f", Technology: "#0096c7", Health: "#52b788" };
+const IMG_GRADIENTS = { Economy: "linear-gradient(135deg,#1a472a,#40916c)", Politics: "linear-gradient(135deg,#2c1654,#ab0e86)", Sports: "linear-gradient(135deg,#7d1128,#e63946)", Entertainment: "linear-gradient(135deg,#b5451b,#f4a261)", Technology: "linear-gradient(135deg,#023e8a,#00b4d8)", Health: "linear-gradient(135deg,#1b4332,#52b788)" };
 
-// —————————————————————————————————————————————————————————————
-// SUPABASE CONFIG — replace with yours from supabase.com
-// —————————————————————————————————————————————————————————————
-const SUPABASE_URL = "https://szzflseeqnhjphmooqfp.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6emZsc2VlcW5oanBobW9vcWZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0NTY5NjIsImV4cCI6MjA2MTAzMjk2Mn0.eyJpc3MiOiJzdXBhYmFzZSJ9";
-const ADMIN_PASSWORD = "naija2026";
-const SITE_EMAIL = "contact@naijablog.com.ng";
-const SITE_NAME = "NaijaBlog";
-const SITE_DOMAIN = "naijablog.com.ng";
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" });
+}
 
-const sb = {
-  async getArticles() {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/articles?order=created_at.desc`, {
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
-    });
-    return r.ok ? r.json() : [];
-  },
-  async insertArticle(a) {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/articles`, {
-      method: "POST",
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" },
-      body: JSON.stringify(a),
-    });
-    const data = await r.json();
-    return data[0];
-  },
-  async updateArticle(id, a) {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/articles?id=eq.${id}`, {
-      method: "PATCH",
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" },
-      body: JSON.stringify(a),
-    });
-    const data = await r.json();
-    return data[0];
-  },
-  async deleteArticle(id) {
-    await fetch(`${SUPABASE_URL}/rest/v1/articles?id=eq.${id}`, {
-      method: "DELETE",
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
-    });
-  },
-};
+function Toast({ msg, type }) {
+  return (
+    <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, background: type === "error" ? "#c1121f" : "#111", color: "#fff", padding: "12px 20px", borderRadius: "2px", fontSize: 13, fontWeight: 600, boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>{msg}</div>
+  );
+}
 
-// ... (Rest of the helper functions and UI components remain the same)
+function Header({ page, setPage, search, setSearch, isAdmin, onAdminClick }) {
+  return (
+    <header style={{ background: "#0d0d0d", color: "#fff", borderBottom: "3px solid #e63946", position: "sticky", top: 0, zIndex: 100 }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 42, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+        <div style={{ fontSize: 10, color: "#555", letterSpacing: "0.06em" }}>NIGERIA'S DIGITAL NEWSROOM</div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button onClick={onAdminClick} style={{ background: "none", border: "1px solid #2a2a2a", color: "#666", padding: "3px 10px", borderRadius: "1px", cursor: "pointer", fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+            {isAdmin ? "⚙ Dashboard" : "Admin"}
+          </button>
+        </div>
+      </div>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "18px 24px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <div onClick={() => setPage("Home")} style={{ cursor: "pointer" }}>
+          <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 40, fontWeight: 900, lineHeight: 1, color: "#fff" }}>
+            Naija<span style={{ color: "#e63946" }}>Blog</span>
+          </div>
+          <div style={{ fontSize: 9, color: "#444", letterSpacing: "0.2em", textTransform: "uppercase", marginTop: 3 }}>Nigeria's Digital Newsroom</div>
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {page === "Home" && (
+            <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.05)", borderRadius: "1px" }}>
+              <span style={{ padding: "0 8px", color: "#555", fontSize: 13 }}>⌕</span>
+              <input placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}
+                style={{ background: "transparent", border: "none", outline: "none", color: "#fff", fontSize: 12, padding: "8px 10px 8px 0", width: 160 }} />
+            </div>
+          )}
+          {isAdmin && (
+            <button onClick={onAdminClick} style={{ background: "#e63946", color: "#fff", border: "none", padding: "8px 14px", borderRadius: "1px", cursor: "pointer", fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap" }}>+ New Post</button>
+          )}
+        </div>
+      </div>
+      <nav style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", display: "flex", overflowX: "auto", gap: 0 }}>
+        {NAV_PAGES.map(p => (
+          <button key={p} onClick={() => setPage(p)} style={{ background: "none", border: "none", cursor: "pointer", color: page === p ? "#e63946" : "#555", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", padding: "10px 14px", whiteSpace: "nowrap", borderBottom: page === p ? "2px solid #e63946" : "2px solid transparent" }}>{p}</button>
+        ))}
+        {page === "Home" && CATEGORIES.map(cat => (
+          <button key={cat} onClick={() => setPage("cat:" + cat)} style={{ background: "none", border: "none", cursor: "pointer", color: page === "cat:" + cat ? "#e63946" : "#444", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", padding: "10px 14px", whiteSpace: "nowrap", borderBottom: page === "cat:" + cat ? "2px solid #e63946" : "2px solid transparent" }}>{cat}</button>
+        ))}
+      </nav>
+    </header>
+  );
+}
+
+function Footer({ setPage }) {
+  return (
+    <footer style={{ background: "#0d0d0d", color: "#444", borderTop: "3px solid #e63946" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 24px 28px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 32 }}>
+        <div>
+          <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 28, fontWeight: 900, color: "#fff", marginBottom: 8 }}>Naija<span style={{ color: "#e63946" }}>Blog</span></div>
+          <p style={{ fontSize: 12, color: "#555", lineHeight: 1.7, margin: 0 }}>Nigeria's leading digital newsroom. Bringing you accurate, timely, and insightful coverage of Nigeria and Africa.</p>
+        </div>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "#666", marginBottom: 12 }}>Categories</div>
+          {CATEGORIES.map(c => (<div key={c} style={{ fontSize: 12, color: "#555", marginBottom: 6, cursor: "pointer" }} onClick={() => setPage("Home")}>{c}</div>))}
+        </div>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "#666", marginBottom: 12 }}>Company</div>
+          {["About", "Contact", "Privacy Policy"].map(p => (
+            <div key={p} onClick={() => setPage(p)} style={{ fontSize: 12, color: "#555", marginBottom: 6, cursor: "pointer" }}>{p}</div>
+          ))}
+        </div>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "#666", marginBottom: 12 }}>Contact</div>
+          <div style={{ fontSize: 12, color: "#555", marginBottom: 6 }}>{SITE_EMAIL}</div>
+          <div style={{ fontSize: 12, color: "#555", marginBottom: 6 }}>Lagos, Nigeria</div>
+        </div>
+      </div>
+      <div style={{ borderTop: "1px solid #1a1a1a", padding: "16px 24px", textAlign: "center", fontSize: 11, color: "#333" }}>
+        © 2026 {SITE_NAME} · {SITE_DOMAIN} · All Rights Reserved
+      </div>
+    </footer>
+  );
+}
+
+function AboutPage() {
+  return (
+    <div style={{ maxWidth: 800, margin: "0 auto", padding: "50px 24px 80px" }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#e63946", marginBottom: 10 }}>About Us</div>
+      <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 38, fontWeight: 900, color: "#111", margin: "0 0 16px", lineHeight: 1.2 }}>Telling Nigeria's Story,<br />One Headline at a Time</h1>
+      <div style={{ width: 60, height: 4, background: "#e63946", marginBottom: 20 }} />
+      <p style={{ fontSize: 16, lineHeight: 1.8, color: "#555", marginBottom: 32 }}>{SITE_NAME} is Nigeria's premier digital news platform, dedicated to delivering accurate, timely, and insightful journalism covering politics, economics, sports, entertainment, technology, and health.</p>
+      {[["Our Mission", `To keep Nigerians at home and in the diaspora informed, engaged, and empowered. Every article we publish is written with accuracy, fairness, and the Nigerian people in mind.`],
+        ["Our Story", `${SITE_NAME} was founded in Lagos by a team of passionate Nigerian journalists and technology enthusiasts who wanted to build a platform combining world-class journalism with cutting-edge technology.`],
+        ["Editorial Standards", `We hold ourselves to the highest standards of journalism. All stories are verified before publication. We do not accept payment for news coverage and our editorial decisions are made independently of advertisers.`],
+        ["AI-Powered Journalism", `${SITE_NAME} uses artificial intelligence to assist our journalists with research and article drafts. However, all published content is reviewed and edited by human journalists.`]
+      ].map(([title, body]) => (
+        <div key={title} style={{ marginBottom: 32 }}>
+          <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 22, fontWeight: 800, color: "#111", margin: "0 0 12px", borderLeft: "3px solid #e63946", paddingLeft: 14 }}>{title}</h2>
+          <p style={{ fontSize: 15, lineHeight: 1.8, color: "#444", margin: 0 }}>{body}</p>
+        </div>
+      ))}
+      <div style={{ background: "#111", color: "#fff", padding: "30px", borderRadius: "2px", borderLeft: "4px solid #e63946" }}>
+        <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Want to write for us?</div>
+        <p style={{ fontSize: 14, color: "#aaa", lineHeight: 1.7, margin: "0 0 16px" }}>We welcome pitches from experienced journalists and writers across Nigeria and the diaspora.</p>
+        <div style={{ fontSize: 13, color: "#e63946", fontWeight: 700 }}>📧 {SITE_EMAIL}</div>
+      </div>
+    </div>
+  );
+}
+
+function ContactPage() {
+  const [sent, setSent] = useState(false);
+  const nameRef = useRef();
+  const emailRef = useRef();
+  const subjectRef = useRef();
+  const messageRef = useRef();
+
+  const handleSubmit = () => {
+    if (!nameRef.current.value || !emailRef.current.value || !messageRef.current.value) return;
+    setSent(true);
+  };
+
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "50px 24px 80px" }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#e63946", marginBottom: 10 }}>Get In Touch</div>
+      <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 38, fontWeight: 900, color: "#111", margin: "0 0 14px" }}>Contact Us</h1>
+      <div style={{ width: 60, height: 4, background: "#e63946", marginBottom: 16 }} />
+      <p style={{ fontSize: 15, color: "#666", lineHeight: 1.7, marginBottom: 32 }}>Have a story tip, feedback, or partnership inquiry? We'd love to hear from you.</p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: 40, alignItems: "start" }}>
+        <div>
+          {[["📧", "Editorial", SITE_EMAIL], ["📰", "Press", `press@${SITE_DOMAIN}`], ["💼", "Advertising", `ads@${SITE_DOMAIN}`], ["📍", "Office", "Lagos Island, Lagos, Nigeria"], ["⏰", "Hours", "Mon–Fri, 8am–6pm WAT"]].map(([icon, label, val]) => (
+            <div key={label} style={{ display: "flex", gap: 14, marginBottom: 22, alignItems: "flex-start" }}>
+              <div style={{ width: 40, height: 40, background: "#111", borderRadius: "2px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{icon}</div>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#999", marginBottom: 3 }}>{label}</div>
+                <div style={{ fontSize: 13, color: "#333" }}>{val}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {sent ? (
+          <div style={{ background: "#f0faf4", border: "1px solid #40916c", padding: "40px", borderRadius: "2px", textAlign: "center" }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+            <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 22, fontWeight: 800, color: "#111", marginBottom: 8 }}>Message Sent!</div>
+            <p style={{ fontSize: 14, color: "#555", lineHeight: 1.7 }}>Thank you! Our team will get back to you within 24–48 hours.</p>
+            <button onClick={() => setSent(false)} style={{ marginTop: 16, background: "#111", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "2px", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>Send Another</button>
+          </div>
+        ) : (
+          <div style={{ background: "#fff", border: "1px solid #eee", padding: "30px", borderRadius: "2px" }}>
+            {[["Full Name *", nameRef, "text"], ["Email Address *", emailRef, "email"], ["Subject", subjectRef, "text"]].map(([label, ref, type]) => (
+              <div key={label} style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 10, fontWeight: 700, color: "#666", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 5 }}>{label}</label>
+                <input ref={ref} type={type} style={{ width: "100%", border: "1px solid #ddd", borderRadius: "2px", padding: "10px 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+              </div>
+            ))}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 10, fontWeight: 700, color: "#666", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 5 }}>Message *</label>
+              <textarea ref={messageRef} rows={5} style={{ width: "100%", border: "1px solid #ddd", borderRadius: "2px", padding: "10px 12px", fontSize: 13, outline: "none", resize: "vertical", boxSizing: "border-box", fontFamily: "Georgia, serif" }} />
+            </div>
+            <button onClick={handleSubmit} style={{ width: "100%", background: "#e63946", color: "#fff", border: "none", padding: 12, borderRadius: "2px", cursor: "pointer", fontSize: 14, fontWeight: 700 }}>
+              Send Message →
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PrivacyPage() {
+  return (
+    <div style={{ maxWidth: 780, margin: "0 auto", padding: "50px 24px 80px" }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#e63946", marginBottom: 10 }}>Legal</div>
+      <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 36, fontWeight: 900, color: "#111", margin: "0 0 12px" }}>Privacy Policy</h1>
+      <div style={{ width: 60, height: 4, background: "#e63946", marginBottom: 14 }} />
+      <p style={{ fontSize: 13, color: "#888", marginBottom: 24 }}>Last updated: April 18, 2026</p>
+      <div style={{ background: "#f8f8f6", padding: "16px 20px", borderRadius: "2px", marginBottom: 32, fontSize: 13, color: "#555", lineHeight: 1.7, borderLeft: "3px solid #e63946" }}>
+        This Privacy Policy explains how {SITE_NAME} collects, uses, and protects your personal information when you use our website.
+      </div>
+      {[
+        ["1. Information We Collect", "We collect usage data such as pages visited, browser type, and IP address. We also collect contact information when you submit our contact form, and cookies for advertising and analytics purposes."],
+        ["2. How We Use Your Information", "We use your information to operate and improve our website, respond to inquiries, send newsletters if subscribed, display advertisements through Google AdSense, and analyze site traffic."],
+        ["3. Google AdSense & Advertising", `${SITE_NAME} uses Google AdSense to display advertisements. Google AdSense uses cookies to serve ads based on your prior visits to our site. You may opt out at adssettings.google.com.`],
+        ["4. Cookies Policy", "We use essential cookies for site functionality, analytics cookies to understand visitor behavior, and advertising cookies for Google AdSense. You can control cookies through your browser settings."],
+        ["5. Third-Party Services", "We use Google Analytics, Google AdSense, Supabase for database hosting, and Anthropic Claude API for AI-assisted content tools."],
+        ["6. Data Retention", "We retain personal data only as long as necessary. Contact form submissions are retained for up to 12 months."],
+        ["7. Your Rights", "Under Nigerian data protection law (NDPA 2023), you have the right to access, correct, or delete your personal data. Contact us at " + SITE_EMAIL + " to exercise these rights."],
+        ["8. Children's Privacy", `${SITE_NAME} is not directed at children under 13. We do not knowingly collect personal information from children.`],
+        ["9. Changes to This Policy", "We may update this Privacy Policy from time to time. Changes will be posted on this page with a new Last Updated date."],
+        ["10. Contact Us", `For questions about this Privacy Policy, contact us at ${SITE_EMAIL}, ${SITE_DOMAIN}, Lagos, Nigeria.`],
+      ].map(([title, body]) => (
+        <div key={title} style={{ marginBottom: 28 }}>
+          <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 18, fontWeight: 800, color: "#111", margin: "0 0 10px", borderLeft: "3px solid #e63946", paddingLeft: 14 }}>{title}</h2>
+          <p style={{ fontSize: 14, lineHeight: 1.85, color: "#444", margin: 0 }}>{body}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ArticleCard({ article, onClick }) {
+  return (
+    <div onClick={() => onClick(article)} style={{ cursor: "pointer", background: "#fff", borderRadius: "2px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", transition: "transform 0.2s, box-shadow 0.2s", display: "flex", flexDirection: "column" }}
+      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.12)"; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.07)"; }}>
+      <div style={{ height: 160, background: IMG_GRADIENTS[article.category] || IMG_GRADIENTS.Economy, display: "flex", alignItems: "flex-end", padding: 14 }}>
+        <span style={{ background: CAT_COLORS[article.category] || "#333", color: "#fff", fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", padding: "3px 9px", borderRadius: "1px" }}>{article.category}</span>
+      </div>
+      <div style={{ padding: "16px 16px 12px", flex: 1, display: "flex", flexDirection: "column" }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 15, fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 700, color: "#111", lineHeight: 1.35 }}>{article.title}</h3>
+        <p style={{ margin: "0 0 10px", fontSize: 12, color: "#555", lineHeight: 1.6, flex: 1 }}>{article.excerpt}</p>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#bbb" }}>
+          <span>{article.author}</span>
+          <span>{fmtDate(article.created_at)} · {article.read_time}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ArticleModal({ article, onClose }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(4px)" }} onClick={onClose}>
+      <div style={{ background: "#fff", borderRadius: "2px", maxWidth: 720, width: "100%", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+        <div style={{ height: 220, background: IMG_GRADIENTS[article.category] || IMG_GRADIENTS.Economy, position: "relative", display: "flex", alignItems: "flex-end", padding: 24 }}>
+          <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", width: 34, height: 34, borderRadius: "50%", cursor: "pointer", fontSize: 18 }}>×</button>
+          <span style={{ background: CAT_COLORS[article.category] || "#333", color: "#fff", fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", padding: "3px 10px", borderRadius: "1px" }}>{article.category}</span>
+        </div>
+        <div style={{ padding: "28px 32px" }}>
+          <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 26, fontWeight: 800, color: "#111", margin: "0 0 10px", lineHeight: 1.3 }}>{article.title}</h1>
+          <div style={{ fontSize: 11, color: "#999", marginBottom: 20 }}>By <strong style={{ color: "#555" }}>{article.author}</strong> · {fmtDate(article.created_at)} · {article.read_time} read</div>
+          <p style={{ fontSize: 14, lineHeight: 1.85, color: "#333", whiteSpace: "pre-line", marginBottom: 24 }}>{article.content}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminPanel({ articles, onSave, onDelete, onClose }) {
+  const [view, setView] = useState("list");
+  const [editing, setEditing] = useState(null);
+  const [category, setCategory] = useState("Economy");
+  const [featured, setFeatured] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+
+  const titleRef = useRef();
+  const excerptRef = useRef();
+  const contentRef = useRef();
+  const authorRef = useRef();
+  const readTimeRef = useRef();
+
+  const openNew = () => {
+    setEditing(null);
+    setCategory("Economy");
+    setFeatured(false);
+    setView("edit");
+    setTimeout(() => {
+      if (titleRef.current) titleRef.current.value = "";
+      if (excerptRef.current) excerptRef.current.value = "";
+      if (contentRef.current) contentRef.current.value = "";
+      if (authorRef.current) authorRef.current.value = "";
+      if (readTimeRef.current) readTimeRef.current.value = "3 min";
+    }, 0);
+  };
+
+  const openEdit = (a) => {
+    setEditing(a);
+    setCategory(a.category);
+    setFeatured(a.featured || false);
+    setView("edit");
+    setTimeout(() => {
+      if (titleRef.current) titleRef.current.value = a.title || "";
+      if (excerptRef.current) excerptRef.current.value = a.excerpt || "";
+      if (contentRef.current) contentRef.current.value = a.content || "";
+      if (authorRef.current) authorRef.current.value = a.author || "";
+      if (readTimeRef.current) readTimeRef.current.value = a.read_time || "3 min";
+    }, 0);
+  };
+
+  const handleSave = async () => {
+    const title = titleRef.current?.value?.trim();
+    const content = contentRef.current?.value?.trim();
+    if (!title || !content) return alert("Title and Content are required!");
+    setSaving(true);
+    await onSave({
+      title,
+      excerpt: excerptRef.current?.value || "",
+      content,
+      author: authorRef.current?.value || "",
+      read_time: readTimeRef.current?.value || "3 min",
+      category,
+      featured,
+    }, editing?.id);
+    setSaving(false);
+    setView("list");
+  };
+
+  const inputStyle = { width: "100%", border: "1px solid #ddd", borderRadius: "2px", padding: "9px 11px", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "Georgia, serif" };
+  const labelStyle = { fontSize: 10, fontWeight: 700, color: "#666", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 4 };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 700, display: "flex", alignItems: "stretch", justifyContent: "flex-end" }}>
+      <div style={{ background: "#0d0d0d", width: 52, display: "flex", flexDirection: "column", alignItems: "center", padding: "16px 0", gap: 4 }}>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "#e63946", fontSize: 20, cursor: "pointer", marginBottom: 12 }}>×</button>
+        <button onClick={() => setView("list")} style={{ background: view === "list" ? "#e63946" : "none", border: "none", color: "#fff", width: 36, height: 36, borderRadius: "2px", cursor: "pointer", fontSize: 14 }}>☰</button>
+        <button onClick={openNew} style={{ background: view === "edit" && !editing ? "#e63946" : "none", border: "none", color: "#fff", width: 36, height: 36, borderRadius: "2px", cursor: "pointer", fontSize: 20 }}>+</button>
+      </div>
+      <div style={{ background: "#fff", width: "min(660px,90vw)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+        <div style={{ background: "#111", color: "#fff", padding: "16px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "3px solid #e63946", flexShrink: 0 }}>
+          <div>
+            <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 18, fontWeight: 800 }}>Naija<span style={{ color: "#e63946" }}>Blog</span> Admin</div>
+            <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.15em", textTransform: "uppercase" }}>{view === "list" ? "All Articles" : editing ? "Edit Article" : "New Article"}</div>
+          </div>
+        </div>
+        <div style={{ padding: "22px", flex: 1 }}>
+          {view === "list" && (
+            <div>
+              <button onClick={openNew} style={{ background: "#e63946", color: "#fff", border: "none", padding: "10px", borderRadius: "2px", cursor: "pointer", fontSize: 13, fontWeight: 700, width: "100%", marginBottom: 18 }}>+ Write New Article</button>
+              {articles.map(a => (
+                <div key={a.id} style={{ border: "1px solid #eee", borderRadius: "2px", padding: "12px 14px", marginBottom: 8, display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <div style={{ width: 44, height: 44, borderRadius: "2px", background: IMG_GRADIENTS[a.category] || IMG_GRADIENTS.Economy, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#111", marginBottom: 3, fontFamily: "'Playfair Display', Georgia, serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</div>
+                    <div style={{ fontSize: 10, color: "#bbb", display: "flex", gap: 6 }}>
+                      <span style={{ color: CAT_COLORS[a.category], fontWeight: 700 }}>{a.category}</span>
+                      <span>·</span><span>{a.author}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    <button onClick={() => openEdit(a)} style={{ background: "#111", color: "#fff", border: "none", padding: "5px 12px", borderRadius: "2px", cursor: "pointer", fontSize: 11 }}>Edit</button>
+                    <button onClick={() => { setDeleting(a.id); onDelete(a.id).then(() => setDeleting(null)); }} disabled={deleting === a.id} style={{ background: "#fff", color: "#c1121f", border: "1px solid #c1121f", padding: "5px 10px", borderRadius: "2px", cursor: "pointer", fontSize: 11 }}>{deleting === a.id ? "…" : "Del"}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {view === "edit" && (
+            <div>
+              <button onClick={() => setView("list")} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 12, marginBottom: 18, padding: 0 }}>← Back to list</button>
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Title *</label>
+                <input ref={titleRef} style={inputStyle} />
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Category</label>
+                <select value={category} onChange={e => setCategory(e.target.value)} style={{ ...inputStyle, background: "#fff" }}>
+                  {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Excerpt</label>
+                <input ref={excerptRef} style={inputStyle} />
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Full Content *</label>
+                <textarea ref={contentRef} rows={9} style={{ ...inputStyle, resize: "vertical" }} />
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Author</label>
+                <input ref={authorRef} style={inputStyle} />
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Read Time</label>
+                <input ref={readTimeRef} style={inputStyle} />
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={handleSave} disabled={saving} style={{ flex: 1, background: "#e63946", color: "#fff", border: "none", padding: 11, borderRadius: "2px", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+                  {saving ? "Saving…" : "Publish Article"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoginModal({ onLogin, onClose }) {
+  const pwRef = useRef();
+  const [err, setErr] = useState("");
+  const handle = () => {
+    if (pwRef.current?.value === ADMIN_PASSWORD) { onLogin(); onClose(); }
+    else setErr("Incorrect password.");
+  };
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={onClose}>
+      <div style={{ background: "#fff", borderRadius: "2px", maxWidth: 360, width: "100%", padding: "34px" }} onClick={e => e.stopPropagation()}>
+        <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 22, fontWeight: 800, color: "#111", marginBottom: 6 }}>Admin Login</div>
+        <input ref={pwRef} type="password" placeholder="Password" onKeyDown={e => e.key === "Enter" && handle()}
+          style={{ width: "100%", border: "1px solid #ddd", borderRadius: "2px", padding: "11px 12px", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
+        {err && <div style={{ color: "#c1121f", fontSize: 12, marginBottom: 8 }}>{err}</div>}
+        <button onClick={handle} style={{ width: "100%", background: "#111", color: "#fff", border: "none", padding: 11, borderRadius: "2px", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>Enter Dashboard</button>
+      </div>
+    </div>
+  );
+}
+
+function HomePage({ articles, loading, onArticleClick, activeCategory, search }) {
+  const filtered = articles.filter(a => {
+    const matchCat = activeCategory === "All" || a.category === activeCategory;
+    const q = search.toLowerCase();
+    return matchCat && (!q || a.title.toLowerCase().includes(q) || (a.excerpt || "").toLowerCase().includes(q));
+  });
+
+  return (
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px 60px" }}>
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 80 }}>Loading articles…</div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 18 }}>
+          {filtered.map(a => <ArticleCard key={a.id} article={a} onClick={onArticleClick} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function App() {
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState("Home");
+  const [search, setSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [selectedArticle, setSelectedArticle] = useState(null);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg, type = "success") => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const data = await sb.getArticles();
+      setArticles(data);
+      setLoading(false);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (page.startsWith("cat:")) { setActiveCategory(page.replace("cat:", "")); setPage("Home"); }
+    else if (page === "Home") setActiveCategory("All");
+  }, [page]);
+
+  const handleSave = async (form, id) => {
+    if (id) { const u = await sb.updateArticle(id, form); setArticles(prev => prev.map(a => a.id === id ? { ...a, ...u } : a)); showToast("Article updated!"); }
+    else { const c = await sb.insertArticle({ ...form, created_at: new Date().toISOString() }); setArticles(prev => [c, ...prev]); showToast("Article published!"); }
+  };
+
+  const handleDelete = async (id) => {
+    await sb.deleteArticle(id);
+    setArticles(prev => prev.filter(a => a.id !== id));
+    showToast("Article deleted");
+  };
+
+  const onAdminClick = () => isAdmin ? setShowAdmin(true) : setShowLogin(true);
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#f5f4f0", fontFamily: "Georgia, serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&display=swap'); * { box-sizing: border-box; }`}</style>
+      <Header page={page} setPage={setPage} search={search} setSearch={setSearch} isAdmin={isAdmin} onAdminClick={onAdminClick} />
+      {page === "Home" && <HomePage articles={articles} loading={loading} onArticleClick={setSelectedArticle} activeCategory={activeCategory} search={search} />}
+      {page === "About" && <AboutPage />}
+      {page === "Contact" && <ContactPage />}
+      {page === "Privacy Policy" && <PrivacyPage />}
+      <Footer setPage={setPage} />
+      {selectedArticle && <ArticleModal article={selectedArticle} onClose={() => setSelectedArticle(null)} />}
+      {showLogin && <LoginModal onLogin={() => setIsAdmin(true)} onClose={() => setShowLogin(false)} />}
+      {showAdmin && isAdmin && <AdminPanel articles={articles} onSave={handleSave} onDelete={handleDelete} onClose={() => setShowAdmin(false)} />}
+      {toast && <Toast msg={toast.msg} type={toast.type} />}
+    </div>
+  );
+}
