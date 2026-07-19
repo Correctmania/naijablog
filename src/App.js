@@ -1,16 +1,34 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+// NaijaBlog v5 - Image Upload Edition - July 2026
 
 // ─────────────────────────────────────────────────────────────
 // SUPABASE CONFIG — replace with yours from supabase.com
 // ─────────────────────────────────────────────────────────────
 const SUPABASE_URL = "https://szzflseeqnhjphmooqfp.supabase.co";
-const SUPABASE_ANON_KEY ="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6emZsc2VlcW5oanBobW9vcWZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMTg5MTksImV4cCI6MjA5MjU5NDkxOX0.rHWouzsDypZ77j7P5tc-guGLJ6ggzEc3qeU522apfgE";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6emZsc2VlcW5oanBobW9vcWZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMTg5MTksImV4cCI6MjA5MjU5NDkxOX0.rHWouzsDypZ77j7P5tc-guGLJ6ggzEc3qeU522apfgE";
 const ADMIN_PASSWORD = "naija2026";
 const SITE_EMAIL = "contact@naijablog.com.ng";
 const SITE_NAME = "NaijaBlog";
 const SITE_DOMAIN = "naijablog.com.ng";
 
 const isSupabaseConnected = true;
+
+// ─── IMAGE UPLOAD TO SUPABASE STORAGE ────────────────────────
+async function uploadImage(file) {
+  const fileExt = file.name.split(".").pop();
+  const fileName = `${Date.now()}.${fileExt}`;
+  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/images/${fileName}`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": file.type,
+    },
+    body: file,
+  });
+  if (!r.ok) throw new Error("Image upload failed");
+  return `${SUPABASE_URL}/storage/v1/object/public/images/${fileName}`;
+}
 
 const sb = {
   async getArticles() {
@@ -415,7 +433,7 @@ function AdminPanel({ articles, onSave, onDelete, onClose }) {
       content,
       author: authorRef.current?.value || "",
       read_time: readTimeRef.current?.value || "3 min",
-      image_url: imageUrlRef.current?.value || "",
+      image_url: imageUrlRef.current?.dataset?.uploadedUrl || "",
       category,
       featured,
     }, editing?.id);
@@ -500,11 +518,32 @@ function AdminPanel({ articles, onSave, onDelete, onClose }) {
                 <input ref={excerptRef} style={inputStyle} />
               </div>
 
-              {/* Image URL */}
+              {/* Image Upload */}
               <div style={{ marginBottom: 14 }}>
-                <label style={labelStyle}>Image URL (paste link from imgbb.com or pexels.com)</label>
-                <input ref={imageUrlRef} placeholder="https://i.ibb.co/your-image.jpg" style={inputStyle} />
-                <div id="imgPreview" style={{ marginTop: 8 }} />
+                <label style={labelStyle}>Article Image</label>
+                <div style={{ border: "1px solid #ddd", borderRadius: "2px", padding: "12px", background: "#f8f8f6" }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={imageUrlRef}
+                    onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+                      const preview = document.getElementById("imgPreview");
+                      if (preview) preview.innerHTML = "<div style='color:#888;font-size:12px;margin-top:6px;'>Uploading image...</div>";
+                      try {
+                        const url = await uploadImage(file);
+                        if (preview) preview.innerHTML = `<div style='margin-top:8px;'><img src='${url}' style='width:100%;max-height:180px;object-fit:cover;border-radius:2px;'/><div style='font-size:11px;color:#40916c;margin-top:4px;'>✅ Image uploaded successfully!</div></div>`;
+                        imageUrlRef.current.dataset.uploadedUrl = url;
+                      } catch {
+                        if (preview) preview.innerHTML = "<div style='color:#c1121f;font-size:12px;margin-top:6px;'>❌ Upload failed. Try again.</div>";
+                      }
+                    }}
+                    style={{ width: "100%", fontSize: 13, cursor: "pointer" }}
+                  />
+                  <div style={{ fontSize: 11, color: "#aaa", marginTop: 6 }}>Upload image from your PC — JPG, PNG, GIF supported</div>
+                  <div id="imgPreview" />
+                </div>
               </div>
 
               {/* Content */}
