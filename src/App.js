@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 // SUPABASE CONFIG — replace with yours from supabase.com
 // ─────────────────────────────────────────────────────────────
 const SUPABASE_URL = "https://szzflseeqnhjphmooqfp.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6emZsc2VlcW5oanBobW9vcWZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0NTY5NjIsImV4cCI6MjA2MTAzMjk2Mn0.eyJpc3MiOiJzdXBhYmFzZSJ9";
+const SUPABASE_ANON_KEY ="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6emZsc2VlcW5oanBobW9vcWZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMTg5MTksImV4cCI6MjA5MjU5NDkxOX0.rHWouzsDypZ77j7P5tc-guGLJ6ggzEc3qeU522apfgE";
 const ADMIN_PASSWORD = "naija2026";
 const SITE_EMAIL = "contact@naijablog.com.ng";
 const SITE_NAME = "NaijaBlog";
