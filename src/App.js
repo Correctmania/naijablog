@@ -17,7 +17,7 @@ const isSupabaseConnected = true;
 async function uploadImage(file) {
   const fileExt = file.name.split(".").pop();
   const fileName = `${Date.now()}.${fileExt}`;
-  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/images/${fileName}`, {
+  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/Image/${fileName}`, {
     method: "POST",
     headers: {
       apikey: SUPABASE_ANON_KEY,
