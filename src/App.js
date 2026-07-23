@@ -17,7 +17,7 @@ const isSupabaseConnected = true;
 async function uploadImage(file) {
   const fileExt = file.name.split(".").pop();
   const fileName = `${Date.now()}.${fileExt}`;
-  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/Image/${fileName}`, {
+  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/Image/public/${fileName}`, {
     method: "POST",
     headers: {
       apikey: SUPABASE_ANON_KEY,
@@ -27,7 +27,7 @@ async function uploadImage(file) {
     body: file,
   });
   if (!r.ok) throw new Error("Image upload failed");
-  return `${SUPABASE_URL}/storage/v1/object/public/Image/${fileName}`;
+  return `${SUPABASE_URL}/storage/v1/object/public/Image/public/${fileName}`;
 }
 
 const sb = {
