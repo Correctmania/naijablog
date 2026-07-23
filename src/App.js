@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-// NaijaBlog v5 - Image Upload Edition - July 2026
+// NaijaBlog v6 - Shareable Links + View Tracking Edition - July 2026
 
 // ─────────────────────────────────────────────────────────────
 // SUPABASE CONFIG — replace with yours from supabase.com
@@ -14,6 +14,7 @@ const SITE_DOMAIN = "naijablog.com.ng";
 const isSupabaseConnected = true;
 
 // ─── IMAGE UPLOAD TO SUPABASE STORAGE ────────────────────────
+// NOTE: bucket "Image" RLS policy requires files inside a "public/" folder path
 async function uploadImage(file) {
   const fileExt = file.name.split(".").pop();
   const fileName = `${Date.now()}.${fileExt}`;
@@ -53,6 +54,14 @@ const sb = {
     });
     return (await r.json())[0];
   },
+  async incrementViews(id, current) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/articles?id=eq.${id}`, {
+      method: "PATCH",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify({ views: (current || 0) + 1 }),
+    });
+    return (await r.json())[0];
+  },
   async deleteArticle(id) {
     await fetch(`${SUPABASE_URL}/rest/v1/articles?id=eq.${id}`, {
       method: "DELETE",
@@ -62,12 +71,12 @@ const sb = {
 };
 
 const SEED = [
-  { id: 1, title: "Nigeria's Economy Shows Resilience Amid Global Headwinds", category: "Economy", featured: true, excerpt: "The Central Bank of Nigeria reports steady GDP growth as oil revenues stabilize and non-oil sectors surge.", content: "Nigeria's economy continues to demonstrate resilience in the face of global economic pressures. The Central Bank of Nigeria has reported steady GDP growth as oil revenues stabilize and non-oil sectors surge.\n\nThe Nigerian Stock Exchange has seen increased activity from retail investors, driven largely by a young, tech-savvy population embracing mobile trading platforms.", author: "Chukwuemeka Obi", read_time: "4 min", created_at: "2026-04-18T08:00:00Z" },
-  { id: 2, title: "Lagos State Launches Ambitious Infrastructure Renewal Plan", category: "Politics", featured: true, excerpt: "Governor announces a ₦2.4 trillion investment in roads, bridges, and rail networks.", content: "The Lagos State Government has unveiled an ambitious ₦2.4 trillion infrastructure renewal plan aimed at transforming the megacity's transport landscape over the next five years.\n\nThe plan includes construction of new bridges across the Lagos Lagoon, expansion of the Blue and Red rail lines, and rehabilitation of major arterial roads.", author: "Amina Suleiman", read_time: "5 min", created_at: "2026-04-17T10:00:00Z" },
-  { id: 3, title: "Super Eagles Eye AFCON Glory with New Tactical Formation", category: "Sports", featured: false, excerpt: "The national football team unveils a dynamic 4-3-3 system ahead of crucial qualifiers.", content: "The Super Eagles coach has unveiled a dynamic new 4-3-3 tactical formation ahead of crucial Africa Cup of Nations qualifiers.\n\nFans across the country have expressed excitement, with support rallies taking place in Lagos, Abuja, and Port Harcourt.", author: "Taiwo Adeyemi", read_time: "3 min", created_at: "2026-04-16T12:00:00Z" },
-  { id: 4, title: "Nollywood's Global Reach Hits Record Streaming Numbers", category: "Entertainment", featured: false, excerpt: "Nigerian films on international platforms surpassed 800 million views last quarter.", content: "Nollywood continues its remarkable global ascent, with Nigerian films on international streaming platforms surpassing 800 million views last quarter.\n\nSeveral Nigerian productions have secured international co-production deals, bringing Hollywood-level production budgets to local stories.", author: "Ngozi Eze", read_time: "4 min", created_at: "2026-04-15T09:00:00Z" },
-  { id: 5, title: "Northern Farmers Adopt Solar-Powered Irrigation Technology", category: "Technology", featured: false, excerpt: "A grassroots tech initiative is transforming smallholder farming across Kano, Kaduna and Katsina states.", content: "A transformative grassroots technology initiative is reshaping smallholder farming across northern Nigeria. Solar-powered irrigation systems are boosting crop yields by up to 300%.\n\nThe program has already reached over 15,000 farming families, reducing post-harvest losses significantly.", author: "Ibrahim Musa", read_time: "6 min", created_at: "2026-04-14T11:00:00Z" },
-  { id: 6, title: "Nigeria's Healthcare System Gets ₦500bn Federal Boost", category: "Health", featured: false, excerpt: "The federal government commits to overhauling primary healthcare centers nationwide.", content: "The Federal Government of Nigeria has committed ₦500 billion to a comprehensive overhaul of the country's primary healthcare system.\n\nHealth experts have called it the most significant healthcare investment in a generation, with funds disbursed over three years.", author: "Dr. Funke Adeyinka", read_time: "5 min", created_at: "2026-04-13T08:00:00Z" },
+  { id: 1, title: "Nigeria's Economy Shows Resilience Amid Global Headwinds", category: "Economy", featured: true, excerpt: "The Central Bank of Nigeria reports steady GDP growth as oil revenues stabilize and non-oil sectors surge.", content: "Nigeria's economy continues to demonstrate resilience in the face of global economic pressures. The Central Bank of Nigeria has reported steady GDP growth as oil revenues stabilize and non-oil sectors surge.\n\nThe Nigerian Stock Exchange has seen increased activity from retail investors, driven largely by a young, tech-savvy population embracing mobile trading platforms.", author: "Chukwuemeka Obi", read_time: "4 min", created_at: "2026-04-18T08:00:00Z", views: 0 },
+  { id: 2, title: "Lagos State Launches Ambitious Infrastructure Renewal Plan", category: "Politics", featured: true, excerpt: "Governor announces a ₦2.4 trillion investment in roads, bridges, and rail networks.", content: "The Lagos State Government has unveiled an ambitious ₦2.4 trillion infrastructure renewal plan aimed at transforming the megacity's transport landscape over the next five years.\n\nThe plan includes construction of new bridges across the Lagos Lagoon, expansion of the Blue and Red rail lines, and rehabilitation of major arterial roads.", author: "Amina Suleiman", read_time: "5 min", created_at: "2026-04-17T10:00:00Z", views: 0 },
+  { id: 3, title: "Super Eagles Eye AFCON Glory with New Tactical Formation", category: "Sports", featured: false, excerpt: "The national football team unveils a dynamic 4-3-3 system ahead of crucial qualifiers.", content: "The Super Eagles coach has unveiled a dynamic new 4-3-3 tactical formation ahead of crucial Africa Cup of Nations qualifiers.\n\nFans across the country have expressed excitement, with support rallies taking place in Lagos, Abuja, and Port Harcourt.", author: "Taiwo Adeyemi", read_time: "3 min", created_at: "2026-04-16T12:00:00Z", views: 0 },
+  { id: 4, title: "Nollywood's Global Reach Hits Record Streaming Numbers", category: "Entertainment", featured: false, excerpt: "Nigerian films on international platforms surpassed 800 million views last quarter.", content: "Nollywood continues its remarkable global ascent, with Nigerian films on international streaming platforms surpassing 800 million views last quarter.\n\nSeveral Nigerian productions have secured international co-production deals, bringing Hollywood-level production budgets to local stories.", author: "Ngozi Eze", read_time: "4 min", created_at: "2026-04-15T09:00:00Z", views: 0 },
+  { id: 5, title: "Northern Farmers Adopt Solar-Powered Irrigation Technology", category: "Technology", featured: false, excerpt: "A grassroots tech initiative is transforming smallholder farming across Kano, Kaduna and Katsina states.", content: "A transformative grassroots technology initiative is reshaping smallholder farming across northern Nigeria. Solar-powered irrigation systems are boosting crop yields by up to 300%.\n\nThe program has already reached over 15,000 farming families, reducing post-harvest losses significantly.", author: "Ibrahim Musa", read_time: "6 min", created_at: "2026-04-14T11:00:00Z", views: 0 },
+  { id: 6, title: "Nigeria's Healthcare System Gets ₦500bn Federal Boost", category: "Health", featured: false, excerpt: "The federal government commits to overhauling primary healthcare centers nationwide.", content: "The Federal Government of Nigeria has committed ₦500 billion to a comprehensive overhaul of the country's primary healthcare system.\n\nHealth experts have called it the most significant healthcare investment in a generation, with funds disbursed over three years.", author: "Dr. Funke Adeyinka", read_time: "5 min", created_at: "2026-04-13T08:00:00Z", views: 0 },
 ];
 
 const CATEGORIES = ["Economy", "Politics", "Sports", "Entertainment", "Technology", "Health"];
@@ -319,7 +328,15 @@ function ArticleModal({ article, onClose }) {
   const [loadSum, setLoadSum] = useState(false);
   const [ans, setAns] = useState("");
   const [loadAns, setLoadAns] = useState(false);
+  const [copied, setCopied] = useState(false);
   const qRef = useRef();
+
+  const copyLink = () => {
+    const link = `${window.location.origin}/article/${article.id}`;
+    navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(4px)" }} onClick={onClose}>
@@ -331,7 +348,12 @@ function ArticleModal({ article, onClose }) {
         </div>
         <div style={{ padding: "28px 32px" }}>
           <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 26, fontWeight: 800, color: "#111", margin: "0 0 10px", lineHeight: 1.3 }}>{article.title}</h1>
-          <div style={{ fontSize: 11, color: "#999", marginBottom: 20 }}>By <strong style={{ color: "#555" }}>{article.author}</strong> · {fmtDate(article.created_at)} · {article.read_time} read</div>
+          <div style={{ fontSize: 11, color: "#999", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+            <span>By <strong style={{ color: "#555" }}>{article.author}</strong> · {fmtDate(article.created_at)} · {article.read_time} read · 👁 {article.views || 0} views</span>
+            <button onClick={copyLink} style={{ background: copied ? "#40916c" : "#111", color: "#fff", border: "none", padding: "6px 14px", borderRadius: "1px", cursor: "pointer", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
+              {copied ? "✓ Link Copied!" : "🔗 Copy Link"}
+            </button>
+          </div>
           <p style={{ fontSize: 14, lineHeight: 1.85, color: "#333", whiteSpace: "pre-line", marginBottom: 24 }}>{article.content}</p>
           <hr style={{ border: "none", borderTop: "1px solid #eee", margin: "20px 0" }} />
           <div style={{ background: "#f8f8f6", padding: 16, borderRadius: "2px" }}>
@@ -473,6 +495,7 @@ function AdminPanel({ articles, onSave, onDelete, onClose }) {
                     <div style={{ fontSize: 10, color: "#bbb", display: "flex", gap: 6, flexWrap: "wrap" }}>
                       <span style={{ color: CAT_COLORS[a.category], fontWeight: 700 }}>{a.category}</span>
                       <span>·</span><span>{a.author}</span>
+                      <span>·</span><span>👁 {a.views || 0} views</span>
                       {a.featured && <span style={{ color: "#e63946", fontWeight: 700 }}>★ Featured</span>}
                     </div>
                   </div>
@@ -541,7 +564,7 @@ function AdminPanel({ articles, onSave, onDelete, onClose }) {
                     }}
                     style={{ width: "100%", fontSize: 13, cursor: "pointer" }}
                   />
-                  <div style={{ fontSize: 11, color: "#aaa", marginTop: 6 }}>Upload image from your PC — JPG, PNG, GIF supported</div>
+                  <div style={{ fontSize: 11, color: "#aaa", marginTop: 6 }}>Upload image from your PC — JPG supported (see note below to enable PNG/GIF)</div>
                   <div id="imgPreview" />
                 </div>
               </div>
@@ -673,14 +696,29 @@ export default function App() {
 
   const showToast = (msg, type = "success") => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
 
+  // Load articles, and if the URL is a direct /article/:id link, open that article + count a view
   useEffect(() => {
     (async () => {
       setLoading(true);
+      let data;
       if (isSupabaseConnected) {
-        const data = await sb.getArticles();
-        setArticles(data.length ? data : SEED);
-      } else { setArticles(SEED); }
+        data = await sb.getArticles();
+        data = data.length ? data : SEED;
+      } else { data = SEED; }
+      setArticles(data);
       setLoading(false);
+
+      const match = window.location.pathname.match(/^\/article\/([\w-]+)/);
+      if (match) {
+        const found = data.find(a => String(a.id) === match[1]);
+        if (found) {
+          setSelectedArticle(found);
+          if (isSupabaseConnected) {
+            sb.incrementViews(found.id, found.views).catch(() => {});
+            setArticles(prev => prev.map(x => x.id === found.id ? { ...x, views: (x.views || 0) + 1 } : x));
+          }
+        }
+      }
     })();
   }, []);
 
@@ -692,10 +730,10 @@ export default function App() {
   const handleSave = async (form, id) => {
     if (isSupabaseConnected) {
       if (id) { const u = await sb.updateArticle(id, form); setArticles(prev => prev.map(a => a.id === id ? { ...a, ...u } : a)); showToast("Article updated!"); }
-      else { const c = await sb.insertArticle({ ...form, created_at: new Date().toISOString() }); setArticles(prev => [c, ...prev]); showToast("Article published!"); }
+      else { const c = await sb.insertArticle({ ...form, created_at: new Date().toISOString(), views: 0 }); setArticles(prev => [c, ...prev]); showToast("Article published!"); }
     } else {
       if (id) { setArticles(prev => prev.map(a => a.id === id ? { ...a, ...form } : a)); showToast("Updated (demo mode)"); }
-      else { setArticles(prev => [{ ...form, id: Date.now(), created_at: new Date().toISOString() }, ...prev]); showToast("Published (demo mode)"); }
+      else { setArticles(prev => [{ ...form, id: Date.now(), created_at: new Date().toISOString(), views: 0 }, ...prev]); showToast("Published (demo mode)"); }
     }
   };
 
@@ -707,16 +745,32 @@ export default function App() {
 
   const onAdminClick = () => isAdmin ? setShowAdmin(true) : setShowLogin(true);
 
+  // Open an article: show modal, update the URL bar so it's shareable, and count a view
+  const openArticle = (a) => {
+    setSelectedArticle(a);
+    window.history.pushState({}, "", `/article/${a.id}`);
+    if (isSupabaseConnected) {
+      sb.incrementViews(a.id, a.views).catch(() => {});
+    }
+    setArticles(prev => prev.map(x => x.id === a.id ? { ...x, views: (x.views || 0) + 1 } : x));
+  };
+
+  // Close article: hide modal, restore the URL to home
+  const closeArticle = () => {
+    setSelectedArticle(null);
+    window.history.pushState({}, "", "/");
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: "#f5f4f0", fontFamily: "Georgia, serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&display=swap'); * { box-sizing: border-box; }`}</style>
       <Header page={page} setPage={setPage} search={search} setSearch={setSearch} isAdmin={isAdmin} onAdminClick={onAdminClick} />
-      {page === "Home" && <HomePage articles={articles} loading={loading} isAdmin={isAdmin} onAdminOpen={() => setShowAdmin(true)} onArticleClick={setSelectedArticle} activeCategory={activeCategory} search={search} />}
+      {page === "Home" && <HomePage articles={articles} loading={loading} isAdmin={isAdmin} onAdminOpen={() => setShowAdmin(true)} onArticleClick={openArticle} activeCategory={activeCategory} search={search} />}
       {page === "About" && <AboutPage />}
       {page === "Contact" && <ContactPage />}
       {page === "Privacy Policy" && <PrivacyPage />}
       <Footer setPage={setPage} />
-      {selectedArticle && <ArticleModal article={selectedArticle} onClose={() => setSelectedArticle(null)} />}
+      {selectedArticle && <ArticleModal article={selectedArticle} onClose={closeArticle} />}
       {showLogin && <LoginModal onLogin={() => setIsAdmin(true)} onClose={() => setShowLogin(false)} />}
       {showAdmin && isAdmin && <AdminPanel articles={articles} onSave={handleSave} onDelete={handleDelete} onClose={() => setShowAdmin(false)} />}
       {toast && <Toast msg={toast.msg} type={toast.type} />}
