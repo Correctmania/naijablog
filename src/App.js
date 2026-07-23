@@ -27,7 +27,7 @@ async function uploadImage(file) {
     body: file,
   });
   if (!r.ok) throw new Error("Image upload failed");
-  return `${SUPABASE_URL}/storage/v1/object/public/images/${fileName}`;
+  return `${SUPABASE_URL}/storage/v1/object/public/Image/${fileName}`;
 }
 
 const sb = {
