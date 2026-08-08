@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-// NaijaBlog v6 - Shareable Links + View Tracking Edition - July 2026
+// NaijaBlog v7 - Comments Edition - July 2026
 
 // ─────────────────────────────────────────────────────────────
 // SUPABASE CONFIG — replace with yours from supabase.com
@@ -68,6 +68,22 @@ const sb = {
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
     });
   },
+  // ─── COMMENTS ───────────────────────────────────────────────
+  async getComments(articleId) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/comment?article_id=eq.${articleId}&order=created_at.desc`, {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+    });
+    return r.ok ? r.json() : [];
+  },
+  async postComment(articleId, name, comment) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/comment`, {
+      method: "POST",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify({ article_id: articleId, name, comment }),
+    });
+    if (!r.ok) throw new Error("Failed to post comment");
+    return (await r.json())[0];
+  },
 };
 
 const SEED = [
@@ -87,13 +103,18 @@ const IMG_GRADIENTS = { Economy: "linear-gradient(135deg,#1a472a,#40916c)", Poli
 function fmtDate(iso) {
   return new Date(iso).toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" });
 }
+function fmtDateShort(iso) {
+  return new Date(iso).toLocaleDateString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
 
 async function callClaude(system, user) {
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
+  const r = await fetch("/api/claude", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, system, messages: [{ role: "user", content: user }] }),
+    body: JSON.stringify({ system, user }),
   });
-  return (await r.json()).content?.[0]?.text || "";
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || "AI request failed");
+  return data.text || "";
 }
 async function aiGenArticle(topic, cat) {
   const txt = await callClaude(
@@ -287,7 +308,7 @@ function PrivacyPage() {
         ["3. Google AdSense & Advertising", `${SITE_NAME} uses Google AdSense to display advertisements. Google AdSense uses cookies to serve ads based on your prior visits to our site. You may opt out at adssettings.google.com.`],
         ["4. Cookies Policy", "We use essential cookies for site functionality, analytics cookies to understand visitor behavior, and advertising cookies for Google AdSense. You can control cookies through your browser settings."],
         ["5. Third-Party Services", "We use Google Analytics, Google AdSense, Supabase for database hosting, and Anthropic Claude API for AI-assisted content tools."],
-        ["6. Data Retention", "We retain personal data only as long as necessary. Contact form submissions are retained for up to 12 months."],
+        ["6. Data Retention", "We retain personal data only as long as necessary. Contact form submissions are retained for up to 12 months. Comments submitted on articles are retained indefinitely unless removal is requested."],
         ["7. Your Rights", "Under Nigerian data protection law (NDPA 2023), you have the right to access, correct, or delete your personal data. Contact us at " + SITE_EMAIL + " to exercise these rights."],
         ["8. Children's Privacy", `${SITE_NAME} is not directed at children under 13. We do not knowingly collect personal information from children.`],
         ["9. Changes to This Policy", "We may update this Privacy Policy from time to time. Changes will be posted on this page with a new Last Updated date."],
@@ -319,6 +340,85 @@ function ArticleCard({ article, onClick }) {
           <span>{fmtDate(article.created_at)} · {article.read_time}</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── COMMENTS SECTION ───────────────────────────────────────
+function CommentsSection({ articleId }) {
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [posting, setPosting] = useState(false);
+  const [error, setError] = useState("");
+  const nameRef = useRef();
+  const commentRef = useRef();
+
+  const loadComments = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await sb.getComments(articleId);
+      setComments(data);
+    } catch {
+      setComments([]);
+    }
+    setLoading(false);
+  }, [articleId]);
+
+  useEffect(() => { loadComments(); }, [loadComments]);
+
+  const handlePost = async () => {
+    const name = nameRef.current?.value?.trim();
+    const comment = commentRef.current?.value?.trim();
+    if (!name || !comment) { setError("Please enter your name and a comment."); return; }
+    setError("");
+    setPosting(true);
+    try {
+      const created = await sb.postComment(articleId, name, comment);
+      setComments(prev => [created, ...prev]);
+      nameRef.current.value = "";
+      commentRef.current.value = "";
+    } catch {
+      setError("Couldn't post your comment. Please try again.");
+    }
+    setPosting(false);
+  };
+
+  const inputStyle = { width: "100%", border: "1px solid #ddd", borderRadius: "2px", padding: "9px 11px", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "Georgia, serif" };
+
+  return (
+    <div style={{ marginTop: 24 }}>
+      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.15em", color: "#bbb", textTransform: "uppercase", marginBottom: 12 }}>
+        💬 Comments {comments.length > 0 && `(${comments.length})`}
+      </div>
+
+      {/* Post a comment form */}
+      <div style={{ background: "#f8f8f6", border: "1px solid #eee", borderRadius: "2px", padding: 14, marginBottom: 18 }}>
+        <input ref={nameRef} placeholder="Your name" style={{ ...inputStyle, marginBottom: 8 }} />
+        <textarea ref={commentRef} placeholder="Write a comment…" rows={3} style={{ ...inputStyle, resize: "vertical", marginBottom: 8 }} />
+        {error && <div style={{ color: "#c1121f", fontSize: 12, marginBottom: 8 }}>{error}</div>}
+        <button onClick={handlePost} disabled={posting} style={{ background: "#111", color: "#fff", border: "none", padding: "8px 18px", borderRadius: "1px", cursor: "pointer", fontSize: 12, fontWeight: 700, opacity: posting ? 0.6 : 1 }}>
+          {posting ? "Posting…" : "Post Comment"}
+        </button>
+      </div>
+
+      {/* Comment list */}
+      {loading ? (
+        <div style={{ fontSize: 12, color: "#aaa", textAlign: "center", padding: 20 }}>Loading comments…</div>
+      ) : comments.length === 0 ? (
+        <div style={{ fontSize: 12, color: "#aaa", textAlign: "center", padding: 20 }}>No comments yet. Be the first to share your thoughts.</div>
+      ) : (
+        <div>
+          {comments.map(c => (
+            <div key={c.id} style={{ borderBottom: "1px solid #f0f0f0", padding: "12px 0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>{c.name}</span>
+                <span style={{ fontSize: 10, color: "#bbb" }}>{fmtDateShort(c.created_at)}</span>
+              </div>
+              <p style={{ fontSize: 13, color: "#444", lineHeight: 1.6, margin: 0, whiteSpace: "pre-line" }}>{c.comment}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -358,20 +458,22 @@ function ArticleModal({ article, onClose }) {
           <hr style={{ border: "none", borderTop: "1px solid #eee", margin: "20px 0" }} />
           <div style={{ background: "#f8f8f6", padding: 16, borderRadius: "2px" }}>
             <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.15em", color: "#bbb", textTransform: "uppercase", marginBottom: 10 }}>🤖 AI Tools</div>
-            <button onClick={async () => { setLoadSum(true); setSummary(await aiSummarize(article.content)); setLoadSum(false); }} disabled={loadSum}
+            <button onClick={async () => { setLoadSum(true); try { setSummary(await aiSummarize(article.content)); } catch { setSummary("Summary failed. Please try again."); } setLoadSum(false); }} disabled={loadSum}
               style={{ background: "#111", color: "#fff", border: "none", padding: "7px 16px", borderRadius: "1px", cursor: "pointer", fontSize: 11, fontWeight: 700, marginBottom: 8, opacity: loadSum ? 0.6 : 1 }}>
               {loadSum ? "Summarising…" : "✦ Quick Summary"}
             </button>
             {summary && <div style={{ background: "#fff", border: "1px solid #e5e5e5", padding: "10px 12px", fontSize: 12, lineHeight: 1.7, color: "#444", marginBottom: 12, whiteSpace: "pre-line", borderRadius: "2px" }}>{summary}</div>}
             <div style={{ display: "flex", gap: 6 }}>
               <input ref={qRef} placeholder="Ask about this article…" style={{ flex: 1, border: "1px solid #ddd", borderRadius: "1px", padding: "7px 10px", fontSize: 12, outline: "none" }} />
-              <button onClick={async () => { setLoadAns(true); setAns(await aiAsk(qRef.current.value, article.content)); setLoadAns(false); }} disabled={loadAns}
+              <button onClick={async () => { setLoadAns(true); try { setAns(await aiAsk(qRef.current.value, article.content)); } catch { setAns("Failed to get an answer. Please try again."); } setLoadAns(false); }} disabled={loadAns}
                 style={{ background: "#111", color: "#fff", border: "none", padding: "7px 14px", borderRadius: "1px", cursor: "pointer", fontSize: 12, fontWeight: 700, opacity: loadAns ? 0.5 : 1 }}>
                 {loadAns ? "…" : "Ask"}
               </button>
             </div>
             {ans && <div style={{ background: "#fff", border: "1px solid #e5e5e5", padding: "10px 12px", fontSize: 12, lineHeight: 1.7, color: "#444", marginTop: 7, whiteSpace: "pre-line", borderRadius: "2px" }}>{ans}</div>}
           </div>
+
+          <CommentsSection articleId={article.id} />
         </div>
       </div>
     </div>
@@ -439,7 +541,7 @@ function AdminPanel({ articles, onSave, onDelete, onClose }) {
       if (readTimeRef.current) readTimeRef.current.value = d.read_time || "3 min";
       if (aiTopicRef.current) aiTopicRef.current.value = "";
     } catch (e) {
-      alert("AI fill failed. Please check your API key or fill manually.");
+      alert("AI fill failed: " + e.message);
     }
     setAiLoading(false);
   };
