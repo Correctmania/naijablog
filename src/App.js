@@ -213,7 +213,7 @@ function App() {
         .animate-ticker {
           display: flex;
           width: max-content;
-          animation: ticker 35s linear infinite;
+          animation: ticker 60s linear infinite;
         }
         .animate-ticker:hover {
           animation-play-state: paused;
