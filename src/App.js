@@ -1,881 +1,704 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-// NaijaBlog v7 - Comments Edition - July 2026
+import React, { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
-// ─────────────────────────────────────────────────────────────
-// SUPABASE CONFIG — replace with yours from supabase.com
-// ─────────────────────────────────────────────────────────────
-const SUPABASE_URL = "https://szzflseeqnhjphmooqfp.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6emZsc2VlcW5oanBobW9vcWZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMTg5MTksImV4cCI6MjA5MjU5NDkxOX0.rHWouzsDypZ77j7P5tc-guGLJ6ggzEc3qeU522apfgE";
-const ADMIN_PASSWORD = "naija2026";
-const SITE_EMAIL = "contact@naijablog.com.ng";
-const SITE_NAME = "NaijaBlog";
-const SITE_DOMAIN = "naijablog.com.ng";
+const supabaseUrl = 'https://szzflseeqnhjphmooqfp.supabase.co';
+const supabaseKey = 'sb_publishable_KB4PTa3Zl6TNXcVL0jOL3g_ovbXv4Dd';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-const isSupabaseConnected = true;
-
-// ─── IMAGE UPLOAD TO SUPABASE STORAGE ────────────────────────
-// NOTE: bucket "Image" RLS policy requires files inside a "public/" folder path
-async function uploadImage(file) {
-  const fileExt = file.name.split(".").pop();
-  const fileName = `${Date.now()}.${fileExt}`;
-  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/Image/public/${fileName}`, {
-    method: "POST",
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      "Content-Type": file.type,
-    },
-    body: file,
-  });
-  if (!r.ok) throw new Error("Image upload failed");
-  return `${SUPABASE_URL}/storage/v1/object/public/Image/public/${fileName}`;
-}
-
-const sb = {
-  async getArticles() {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/articles?order=created_at.desc`, {
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
-    });
-    return r.ok ? r.json() : [];
-  },
-  async insertArticle(a) {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/articles`, {
-      method: "POST",
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" },
-      body: JSON.stringify(a),
-    });
-    return (await r.json())[0];
-  },
-  async updateArticle(id, a) {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/articles?id=eq.${id}`, {
-      method: "PATCH",
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" },
-      body: JSON.stringify(a),
-    });
-    return (await r.json())[0];
-  },
-  async incrementViews(id, current) {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/articles?id=eq.${id}`, {
-      method: "PATCH",
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" },
-      body: JSON.stringify({ views: (current || 0) + 1 }),
-    });
-    return (await r.json())[0];
-  },
-  async deleteArticle(id) {
-    await fetch(`${SUPABASE_URL}/rest/v1/articles?id=eq.${id}`, {
-      method: "DELETE",
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
-    });
-  },
-  // ─── COMMENTS ───────────────────────────────────────────────
-  async getComments(articleId) {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/comment?article_id=eq.${articleId}&order=created_at.desc`, {
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
-    });
-    return r.ok ? r.json() : [];
-  },
-  async postComment(articleId, name, comment) {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/comment`, {
-      method: "POST",
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" },
-      body: JSON.stringify({ article_id: articleId, name, comment }),
-    });
-    if (!r.ok) throw new Error("Failed to post comment");
-    return (await r.json())[0];
-  },
-};
-
-const SEED = [
-  { id: 1, title: "Nigeria's Economy Shows Resilience Amid Global Headwinds", category: "Economy", featured: true, excerpt: "The Central Bank of Nigeria reports steady GDP growth as oil revenues stabilize and non-oil sectors surge.", content: "Nigeria's economy continues to demonstrate resilience in the face of global economic pressures. The Central Bank of Nigeria has reported steady GDP growth as oil revenues stabilize and non-oil sectors surge.\n\nThe Nigerian Stock Exchange has seen increased activity from retail investors, driven largely by a young, tech-savvy population embracing mobile trading platforms.", author: "Chukwuemeka Obi", read_time: "4 min", created_at: "2026-04-18T08:00:00Z", views: 0 },
-  { id: 2, title: "Lagos State Launches Ambitious Infrastructure Renewal Plan", category: "Politics", featured: true, excerpt: "Governor announces a ₦2.4 trillion investment in roads, bridges, and rail networks.", content: "The Lagos State Government has unveiled an ambitious ₦2.4 trillion infrastructure renewal plan aimed at transforming the megacity's transport landscape over the next five years.\n\nThe plan includes construction of new bridges across the Lagos Lagoon, expansion of the Blue and Red rail lines, and rehabilitation of major arterial roads.", author: "Amina Suleiman", read_time: "5 min", created_at: "2026-04-17T10:00:00Z", views: 0 },
-  { id: 3, title: "Super Eagles Eye AFCON Glory with New Tactical Formation", category: "Sports", featured: false, excerpt: "The national football team unveils a dynamic 4-3-3 system ahead of crucial qualifiers.", content: "The Super Eagles coach has unveiled a dynamic new 4-3-3 tactical formation ahead of crucial Africa Cup of Nations qualifiers.\n\nFans across the country have expressed excitement, with support rallies taking place in Lagos, Abuja, and Port Harcourt.", author: "Taiwo Adeyemi", read_time: "3 min", created_at: "2026-04-16T12:00:00Z", views: 0 },
-  { id: 4, title: "Nollywood's Global Reach Hits Record Streaming Numbers", category: "Entertainment", featured: false, excerpt: "Nigerian films on international platforms surpassed 800 million views last quarter.", content: "Nollywood continues its remarkable global ascent, with Nigerian films on international streaming platforms surpassing 800 million views last quarter.\n\nSeveral Nigerian productions have secured international co-production deals, bringing Hollywood-level production budgets to local stories.", author: "Ngozi Eze", read_time: "4 min", created_at: "2026-04-15T09:00:00Z", views: 0 },
-  { id: 5, title: "Northern Farmers Adopt Solar-Powered Irrigation Technology", category: "Technology", featured: false, excerpt: "A grassroots tech initiative is transforming smallholder farming across Kano, Kaduna and Katsina states.", content: "A transformative grassroots technology initiative is reshaping smallholder farming across northern Nigeria. Solar-powered irrigation systems are boosting crop yields by up to 300%.\n\nThe program has already reached over 15,000 farming families, reducing post-harvest losses significantly.", author: "Ibrahim Musa", read_time: "6 min", created_at: "2026-04-14T11:00:00Z", views: 0 },
-  { id: 6, title: "Nigeria's Healthcare System Gets ₦500bn Federal Boost", category: "Health", featured: false, excerpt: "The federal government commits to overhauling primary healthcare centers nationwide.", content: "The Federal Government of Nigeria has committed ₦500 billion to a comprehensive overhaul of the country's primary healthcare system.\n\nHealth experts have called it the most significant healthcare investment in a generation, with funds disbursed over three years.", author: "Dr. Funke Adeyinka", read_time: "5 min", created_at: "2026-04-13T08:00:00Z", views: 0 },
-];
-
-const CATEGORIES = ["Economy", "Politics", "Sports", "Entertainment", "Technology", "Health"];
-const NAV_PAGES = ["Home", "About", "Contact", "Privacy Policy"];
-const CAT_COLORS = { Economy: "#40916c", Politics: "#9b2226", Sports: "#e63946", Entertainment: "#e07a5f", Technology: "#0096c7", Health: "#52b788" };
-const IMG_GRADIENTS = { Economy: "linear-gradient(135deg,#1a472a,#40916c)", Politics: "linear-gradient(135deg,#2c1654,#ab0e86)", Sports: "linear-gradient(135deg,#7d1128,#e63946)", Entertainment: "linear-gradient(135deg,#b5451b,#f4a261)", Technology: "linear-gradient(135deg,#023e8a,#00b4d8)", Health: "linear-gradient(135deg,#1b4332,#52b788)" };
-
-function fmtDate(iso) {
-  return new Date(iso).toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" });
-}
-function fmtDateShort(iso) {
-  return new Date(iso).toLocaleDateString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
-async function callClaude(system, user) {
-  const r = await fetch("/api/claude", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ system, user }),
-  });
-  const data = await r.json();
-  if (!r.ok) throw new Error(data.error || "AI request failed");
-  return data.text || "";
-}
-async function aiGenArticle(topic, cat) {
-  const txt = await callClaude(
-    `You are a senior journalist for ${SITE_NAME}, Nigeria's premier digital news platform. Return ONLY valid JSON (no markdown) with: {"title":"...","excerpt":"...","content":"...","author":"...","read_time":"X min"}. title: max 12 words. excerpt: max 40 words. content: 2 paragraphs. author: realistic Nigerian full name.`,
-    `Write a news article. Topic: ${topic}. Category: ${cat}`
-  );
-  return JSON.parse(txt.replace(/```json|```/g, "").trim());
-}
-async function aiSummarize(content) { return callClaude("Summarize this article in exactly 2 bullet points. Be concise and factual.", content); }
-async function aiAsk(q, content) { return callClaude(`You help readers of ${SITE_NAME} understand articles. Article:\n${content}`, q); }
-
-function Toast({ msg, type }) {
-  return (
-    <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, background: type === "error" ? "#c1121f" : "#111", color: "#fff", padding: "12px 20px", borderRadius: "2px", fontSize: 13, fontWeight: 600, boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>{msg}</div>
-  );
-}
-
-function Header({ page, setPage, search, setSearch, isAdmin, onAdminClick }) {
-  return (
-    <header style={{ background: "#0d0d0d", color: "#fff", borderBottom: "3px solid #e63946", position: "sticky", top: 0, zIndex: 100 }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 42, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-        <div style={{ fontSize: 10, color: "#555", letterSpacing: "0.06em" }}>NIGERIA'S DIGITAL NEWSROOM</div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {!isSupabaseConnected && <span style={{ fontSize: 9, color: "#e63946", fontWeight: 700, letterSpacing: "0.1em" }}>⚠ DEMO MODE</span>}
-          <button onClick={onAdminClick} style={{ background: "none", border: "1px solid #2a2a2a", color: "#666", padding: "3px 10px", borderRadius: "1px", cursor: "pointer", fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-            {isAdmin ? "⚙ Dashboard" : "Admin"}
-          </button>
-        </div>
-      </div>
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "18px 24px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <div onClick={() => setPage("Home")} style={{ cursor: "pointer" }}>
-          <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 40, fontWeight: 900, lineHeight: 1, color: "#fff" }}>
-            Naija<span style={{ color: "#e63946" }}>Blog</span>
-          </div>
-          <div style={{ fontSize: 9, color: "#444", letterSpacing: "0.2em", textTransform: "uppercase", marginTop: 3 }}>Nigeria's Digital Newsroom</div>
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {page === "Home" && (
-            <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.05)", borderRadius: "1px" }}>
-              <span style={{ padding: "0 8px", color: "#555", fontSize: 13 }}>⌕</span>
-              <input placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}
-                style={{ background: "transparent", border: "none", outline: "none", color: "#fff", fontSize: 12, padding: "8px 10px 8px 0", width: 160 }} />
-            </div>
-          )}
-          {isAdmin && (
-            <button onClick={onAdminClick} style={{ background: "#e63946", color: "#fff", border: "none", padding: "8px 14px", borderRadius: "1px", cursor: "pointer", fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap" }}>+ New Post</button>
-          )}
-        </div>
-      </div>
-      <nav style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", display: "flex", overflowX: "auto", gap: 0 }}>
-        {NAV_PAGES.map(p => (
-          <button key={p} onClick={() => setPage(p)} style={{ background: "none", border: "none", cursor: "pointer", color: page === p ? "#e63946" : "#555", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", padding: "10px 14px", whiteSpace: "nowrap", borderBottom: page === p ? "2px solid #e63946" : "2px solid transparent" }}>{p}</button>
-        ))}
-        {page === "Home" && CATEGORIES.map(cat => (
-          <button key={cat} onClick={() => setPage("cat:" + cat)} style={{ background: "none", border: "none", cursor: "pointer", color: page === "cat:" + cat ? "#e63946" : "#444", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", padding: "10px 14px", whiteSpace: "nowrap", borderBottom: page === "cat:" + cat ? "2px solid #e63946" : "2px solid transparent" }}>{cat}</button>
-        ))}
-      </nav>
-    </header>
-  );
-}
-
-function Footer({ setPage }) {
-  return (
-    <footer style={{ background: "#0d0d0d", color: "#444", borderTop: "3px solid #e63946" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 24px 28px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 32 }}>
-        <div>
-          <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 28, fontWeight: 900, color: "#fff", marginBottom: 8 }}>Naija<span style={{ color: "#e63946" }}>Blog</span></div>
-          <p style={{ fontSize: 12, color: "#555", lineHeight: 1.7, margin: 0 }}>Nigeria's leading digital newsroom. Bringing you accurate, timely, and insightful coverage of Nigeria and Africa.</p>
-        </div>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "#666", marginBottom: 12 }}>Categories</div>
-          {CATEGORIES.map(c => (<div key={c} style={{ fontSize: 12, color: "#555", marginBottom: 6, cursor: "pointer" }} onClick={() => setPage("Home")}>{c}</div>))}
-        </div>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "#666", marginBottom: 12 }}>Company</div>
-          {["About", "Contact", "Privacy Policy"].map(p => (
-            <div key={p} onClick={() => setPage(p)} style={{ fontSize: 12, color: "#555", marginBottom: 6, cursor: "pointer" }}>{p}</div>
-          ))}
-        </div>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "#666", marginBottom: 12 }}>Contact</div>
-          <div style={{ fontSize: 12, color: "#555", marginBottom: 6 }}>{SITE_EMAIL}</div>
-          <div style={{ fontSize: 12, color: "#555", marginBottom: 6 }}>Lagos, Nigeria</div>
-        </div>
-      </div>
-      <div style={{ borderTop: "1px solid #1a1a1a", padding: "16px 24px", textAlign: "center", fontSize: 11, color: "#333" }}>
-        © 2026 {SITE_NAME} · {SITE_DOMAIN} · All Rights Reserved
-      </div>
-    </footer>
-  );
-}
-
-function AboutPage() {
-  return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: "50px 24px 80px" }}>
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#e63946", marginBottom: 10 }}>About Us</div>
-      <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 38, fontWeight: 900, color: "#111", margin: "0 0 16px", lineHeight: 1.2 }}>Telling Nigeria's Story,<br />One Headline at a Time</h1>
-      <div style={{ width: 60, height: 4, background: "#e63946", marginBottom: 20 }} />
-      <p style={{ fontSize: 16, lineHeight: 1.8, color: "#555", marginBottom: 32 }}>{SITE_NAME} is Nigeria's premier digital news platform, dedicated to delivering accurate, timely, and insightful journalism covering politics, economics, sports, entertainment, technology, and health.</p>
-      {[["Our Mission", `To keep Nigerians at home and in the diaspora informed, engaged, and empowered. Every article we publish is written with accuracy, fairness, and the Nigerian people in mind.`],
-        ["Our Story", `${SITE_NAME} was founded in Lagos by a team of passionate Nigerian journalists and technology enthusiasts who wanted to build a platform combining world-class journalism with cutting-edge technology.`],
-        ["Editorial Standards", `We hold ourselves to the highest standards of journalism. All stories are verified before publication. We do not accept payment for news coverage and our editorial decisions are made independently of advertisers.`],
-        ["AI-Powered Journalism", `${SITE_NAME} uses artificial intelligence to assist our journalists with research and article drafts. However, all published content is reviewed and edited by human journalists.`]
-      ].map(([title, body]) => (
-        <div key={title} style={{ marginBottom: 32 }}>
-          <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 22, fontWeight: 800, color: "#111", margin: "0 0 12px", borderLeft: "3px solid #e63946", paddingLeft: 14 }}>{title}</h2>
-          <p style={{ fontSize: 15, lineHeight: 1.8, color: "#444", margin: 0 }}>{body}</p>
-        </div>
-      ))}
-      <div style={{ background: "#111", color: "#fff", padding: "30px", borderRadius: "2px", borderLeft: "4px solid #e63946" }}>
-        <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Want to write for us?</div>
-        <p style={{ fontSize: 14, color: "#aaa", lineHeight: 1.7, margin: "0 0 16px" }}>We welcome pitches from experienced journalists and writers across Nigeria and the diaspora.</p>
-        <div style={{ fontSize: 13, color: "#e63946", fontWeight: 700 }}>📧 {SITE_EMAIL}</div>
-      </div>
-    </div>
-  );
-}
-
-function ContactPage() {
-  const [sent, setSent] = useState(false);
-  const nameRef = useRef();
-  const emailRef = useRef();
-  const subjectRef = useRef();
-  const messageRef = useRef();
-
-  const handleSubmit = () => {
-    if (!nameRef.current.value || !emailRef.current.value || !messageRef.current.value) return;
-    setSent(true);
-  };
-
-  return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: "50px 24px 80px" }}>
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#e63946", marginBottom: 10 }}>Get In Touch</div>
-      <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 38, fontWeight: 900, color: "#111", margin: "0 0 14px" }}>Contact Us</h1>
-      <div style={{ width: 60, height: 4, background: "#e63946", marginBottom: 16 }} />
-      <p style={{ fontSize: 15, color: "#666", lineHeight: 1.7, marginBottom: 32 }}>Have a story tip, feedback, or partnership inquiry? We'd love to hear from you.</p>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: 40, alignItems: "start" }}>
-        <div>
-          {[["📧", "Editorial", SITE_EMAIL], ["📰", "Press", `press@${SITE_DOMAIN}`], ["💼", "Advertising", `ads@${SITE_DOMAIN}`], ["📍", "Office", "Lagos Island, Lagos, Nigeria"], ["⏰", "Hours", "Mon–Fri, 8am–6pm WAT"]].map(([icon, label, val]) => (
-            <div key={label} style={{ display: "flex", gap: 14, marginBottom: 22, alignItems: "flex-start" }}>
-              <div style={{ width: 40, height: 40, background: "#111", borderRadius: "2px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{icon}</div>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#999", marginBottom: 3 }}>{label}</div>
-                <div style={{ fontSize: 13, color: "#333" }}>{val}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-        {sent ? (
-          <div style={{ background: "#f0faf4", border: "1px solid #40916c", padding: "40px", borderRadius: "2px", textAlign: "center" }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
-            <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 22, fontWeight: 800, color: "#111", marginBottom: 8 }}>Message Sent!</div>
-            <p style={{ fontSize: 14, color: "#555", lineHeight: 1.7 }}>Thank you! Our team will get back to you within 24–48 hours.</p>
-            <button onClick={() => setSent(false)} style={{ marginTop: 16, background: "#111", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "2px", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>Send Another</button>
-          </div>
-        ) : (
-          <div style={{ background: "#fff", border: "1px solid #eee", padding: "30px", borderRadius: "2px" }}>
-            {[["Full Name *", nameRef, "text"], ["Email Address *", emailRef, "email"], ["Subject", subjectRef, "text"]].map(([label, ref, type]) => (
-              <div key={label} style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 10, fontWeight: 700, color: "#666", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 5 }}>{label}</label>
-                <input ref={ref} type={type} style={{ width: "100%", border: "1px solid #ddd", borderRadius: "2px", padding: "10px 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
-              </div>
-            ))}
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 10, fontWeight: 700, color: "#666", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 5 }}>Message *</label>
-              <textarea ref={messageRef} rows={5} style={{ width: "100%", border: "1px solid #ddd", borderRadius: "2px", padding: "10px 12px", fontSize: 13, outline: "none", resize: "vertical", boxSizing: "border-box", fontFamily: "Georgia, serif" }} />
-            </div>
-            <button onClick={handleSubmit} style={{ width: "100%", background: "#e63946", color: "#fff", border: "none", padding: 12, borderRadius: "2px", cursor: "pointer", fontSize: 14, fontWeight: 700 }}>
-              Send Message →
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function PrivacyPage() {
-  return (
-    <div style={{ maxWidth: 780, margin: "0 auto", padding: "50px 24px 80px" }}>
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#e63946", marginBottom: 10 }}>Legal</div>
-      <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 36, fontWeight: 900, color: "#111", margin: "0 0 12px" }}>Privacy Policy</h1>
-      <div style={{ width: 60, height: 4, background: "#e63946", marginBottom: 14 }} />
-      <p style={{ fontSize: 13, color: "#888", marginBottom: 24 }}>Last updated: April 18, 2026</p>
-      <div style={{ background: "#f8f8f6", padding: "16px 20px", borderRadius: "2px", marginBottom: 32, fontSize: 13, color: "#555", lineHeight: 1.7, borderLeft: "3px solid #e63946" }}>
-        This Privacy Policy explains how {SITE_NAME} collects, uses, and protects your personal information when you use our website.
-      </div>
-      {[
-        ["1. Information We Collect", "We collect usage data such as pages visited, browser type, and IP address. We also collect contact information when you submit our contact form, and cookies for advertising and analytics purposes."],
-        ["2. How We Use Your Information", "We use your information to operate and improve our website, respond to inquiries, send newsletters if subscribed, display advertisements through Google AdSense, and analyze site traffic."],
-        ["3. Google AdSense & Advertising", `${SITE_NAME} uses Google AdSense to display advertisements. Google AdSense uses cookies to serve ads based on your prior visits to our site. You may opt out at adssettings.google.com.`],
-        ["4. Cookies Policy", "We use essential cookies for site functionality, analytics cookies to understand visitor behavior, and advertising cookies for Google AdSense. You can control cookies through your browser settings."],
-        ["5. Third-Party Services", "We use Google Analytics, Google AdSense, Supabase for database hosting, and Anthropic Claude API for AI-assisted content tools."],
-        ["6. Data Retention", "We retain personal data only as long as necessary. Contact form submissions are retained for up to 12 months. Comments submitted on articles are retained indefinitely unless removal is requested."],
-        ["7. Your Rights", "Under Nigerian data protection law (NDPA 2023), you have the right to access, correct, or delete your personal data. Contact us at " + SITE_EMAIL + " to exercise these rights."],
-        ["8. Children's Privacy", `${SITE_NAME} is not directed at children under 13. We do not knowingly collect personal information from children.`],
-        ["9. Changes to This Policy", "We may update this Privacy Policy from time to time. Changes will be posted on this page with a new Last Updated date."],
-        ["10. Contact Us", `For questions about this Privacy Policy, contact us at ${SITE_EMAIL}, ${SITE_DOMAIN}, Lagos, Nigeria.`],
-      ].map(([title, body]) => (
-        <div key={title} style={{ marginBottom: 28 }}>
-          <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 18, fontWeight: 800, color: "#111", margin: "0 0 10px", borderLeft: "3px solid #e63946", paddingLeft: 14 }}>{title}</h2>
-          <p style={{ fontSize: 14, lineHeight: 1.85, color: "#444", margin: 0 }}>{body}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ArticleCard({ article, onClick }) {
-  return (
-    <div onClick={() => onClick(article)} style={{ cursor: "pointer", background: "#fff", borderRadius: "2px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", transition: "transform 0.2s, box-shadow 0.2s", display: "flex", flexDirection: "column" }}
-      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.12)"; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.07)"; }}>
-      <div style={{ height: 160, background: article.image_url ? "none" : (IMG_GRADIENTS[article.category] || IMG_GRADIENTS.Economy), backgroundImage: article.image_url ? `url(${article.image_url})` : "none", backgroundSize: "cover", backgroundPosition: "center", display: "flex", alignItems: "flex-end", padding: 14, position: "relative" }}>
-        {article.image_url && <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)" }} />}
-        <span style={{ position: "relative", background: CAT_COLORS[article.category] || "#333", color: "#fff", fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", padding: "3px 9px", borderRadius: "1px" }}>{article.category}</span>
-      </div>
-      <div style={{ padding: "16px 16px 12px", flex: 1, display: "flex", flexDirection: "column" }}>
-        <h3 style={{ margin: "0 0 8px", fontSize: 15, fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 700, color: "#111", lineHeight: 1.35 }}>{article.title}</h3>
-        <p style={{ margin: "0 0 10px", fontSize: 12, color: "#555", lineHeight: 1.6, flex: 1 }}>{article.excerpt}</p>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#bbb" }}>
-          <span>{article.author}</span>
-          <span>{fmtDate(article.created_at)} · {article.read_time}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── COMMENTS SECTION ───────────────────────────────────────
-function CommentsSection({ articleId }) {
-  const [comments, setComments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [posting, setPosting] = useState(false);
-  const [error, setError] = useState("");
-  const nameRef = useRef();
-  const commentRef = useRef();
-
-  const loadComments = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await sb.getComments(articleId);
-      setComments(data);
-    } catch {
-      setComments([]);
-    }
-    setLoading(false);
-  }, [articleId]);
-
-  useEffect(() => { loadComments(); }, [loadComments]);
-
-  const handlePost = async () => {
-    const name = nameRef.current?.value?.trim();
-    const comment = commentRef.current?.value?.trim();
-    if (!name || !comment) { setError("Please enter your name and a comment."); return; }
-    setError("");
-    setPosting(true);
-    try {
-      const created = await sb.postComment(articleId, name, comment);
-      setComments(prev => [created, ...prev]);
-      nameRef.current.value = "";
-      commentRef.current.value = "";
-    } catch {
-      setError("Couldn't post your comment. Please try again.");
-    }
-    setPosting(false);
-  };
-
-  const inputStyle = { width: "100%", border: "1px solid #ddd", borderRadius: "2px", padding: "9px 11px", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "Georgia, serif" };
-
-  return (
-    <div style={{ marginTop: 24 }}>
-      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.15em", color: "#bbb", textTransform: "uppercase", marginBottom: 12 }}>
-        💬 Comments {comments.length > 0 && `(${comments.length})`}
-      </div>
-
-      {/* Post a comment form */}
-      <div style={{ background: "#f8f8f6", border: "1px solid #eee", borderRadius: "2px", padding: 14, marginBottom: 18 }}>
-        <input ref={nameRef} placeholder="Your name" style={{ ...inputStyle, marginBottom: 8 }} />
-        <textarea ref={commentRef} placeholder="Write a comment…" rows={3} style={{ ...inputStyle, resize: "vertical", marginBottom: 8 }} />
-        {error && <div style={{ color: "#c1121f", fontSize: 12, marginBottom: 8 }}>{error}</div>}
-        <button onClick={handlePost} disabled={posting} style={{ background: "#111", color: "#fff", border: "none", padding: "8px 18px", borderRadius: "1px", cursor: "pointer", fontSize: 12, fontWeight: 700, opacity: posting ? 0.6 : 1 }}>
-          {posting ? "Posting…" : "Post Comment"}
-        </button>
-      </div>
-
-      {/* Comment list */}
-      {loading ? (
-        <div style={{ fontSize: 12, color: "#aaa", textAlign: "center", padding: 20 }}>Loading comments…</div>
-      ) : comments.length === 0 ? (
-        <div style={{ fontSize: 12, color: "#aaa", textAlign: "center", padding: 20 }}>No comments yet. Be the first to share your thoughts.</div>
-      ) : (
-        <div>
-          {comments.map(c => (
-            <div key={c.id} style={{ borderBottom: "1px solid #f0f0f0", padding: "12px 0" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>{c.name}</span>
-                <span style={{ fontSize: 10, color: "#bbb" }}>{fmtDateShort(c.created_at)}</span>
-              </div>
-              <p style={{ fontSize: 13, color: "#444", lineHeight: 1.6, margin: 0, whiteSpace: "pre-line" }}>{c.comment}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ArticleModal({ article, onClose }) {
-  const [summary, setSummary] = useState("");
-  const [loadSum, setLoadSum] = useState(false);
-  const [ans, setAns] = useState("");
-  const [loadAns, setLoadAns] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const qRef = useRef();
-
-  const copyLink = () => {
-    const link = `${window.location.origin}/article/${article.id}`;
-    navigator.clipboard.writeText(link);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(4px)" }} onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: "2px", maxWidth: 720, width: "100%", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-        <div style={{ height: 220, background: article.image_url ? "none" : (IMG_GRADIENTS[article.category] || IMG_GRADIENTS.Economy), backgroundImage: article.image_url ? `url(${article.image_url})` : "none", backgroundSize: "cover", backgroundPosition: "center", position: "relative", display: "flex", alignItems: "flex-end", padding: 24 }}>
-          {article.image_url && <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)" }} />}
-          <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", width: 34, height: 34, borderRadius: "50%", cursor: "pointer", fontSize: 18 }}>×</button>
-          <span style={{ background: CAT_COLORS[article.category] || "#333", color: "#fff", fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", padding: "3px 10px", borderRadius: "1px" }}>{article.category}</span>
-        </div>
-        <div style={{ padding: "28px 32px" }}>
-          <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 26, fontWeight: 800, color: "#111", margin: "0 0 10px", lineHeight: 1.3 }}>{article.title}</h1>
-          <div style={{ fontSize: 11, color: "#999", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-            <span>By <strong style={{ color: "#555" }}>{article.author}</strong> · {fmtDate(article.created_at)} · {article.read_time} read · 👁 {article.views || 0} views</span>
-            <button onClick={copyLink} style={{ background: copied ? "#40916c" : "#111", color: "#fff", border: "none", padding: "6px 14px", borderRadius: "1px", cursor: "pointer", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
-              {copied ? "✓ Link Copied!" : "🔗 Copy Link"}
-            </button>
-          </div>
-          <p style={{ fontSize: 14, lineHeight: 1.85, color: "#333", whiteSpace: "pre-line", marginBottom: 24 }}>{article.content}</p>
-          <hr style={{ border: "none", borderTop: "1px solid #eee", margin: "20px 0" }} />
-          <div style={{ background: "#f8f8f6", padding: 16, borderRadius: "2px" }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.15em", color: "#bbb", textTransform: "uppercase", marginBottom: 10 }}>🤖 AI Tools</div>
-            <button onClick={async () => { setLoadSum(true); try { setSummary(await aiSummarize(article.content)); } catch { setSummary("Summary failed. Please try again."); } setLoadSum(false); }} disabled={loadSum}
-              style={{ background: "#111", color: "#fff", border: "none", padding: "7px 16px", borderRadius: "1px", cursor: "pointer", fontSize: 11, fontWeight: 700, marginBottom: 8, opacity: loadSum ? 0.6 : 1 }}>
-              {loadSum ? "Summarising…" : "✦ Quick Summary"}
-            </button>
-            {summary && <div style={{ background: "#fff", border: "1px solid #e5e5e5", padding: "10px 12px", fontSize: 12, lineHeight: 1.7, color: "#444", marginBottom: 12, whiteSpace: "pre-line", borderRadius: "2px" }}>{summary}</div>}
-            <div style={{ display: "flex", gap: 6 }}>
-              <input ref={qRef} placeholder="Ask about this article…" style={{ flex: 1, border: "1px solid #ddd", borderRadius: "1px", padding: "7px 10px", fontSize: 12, outline: "none" }} />
-              <button onClick={async () => { setLoadAns(true); try { setAns(await aiAsk(qRef.current.value, article.content)); } catch { setAns("Failed to get an answer. Please try again."); } setLoadAns(false); }} disabled={loadAns}
-                style={{ background: "#111", color: "#fff", border: "none", padding: "7px 14px", borderRadius: "1px", cursor: "pointer", fontSize: 12, fontWeight: 700, opacity: loadAns ? 0.5 : 1 }}>
-                {loadAns ? "…" : "Ask"}
-              </button>
-            </div>
-            {ans && <div style={{ background: "#fff", border: "1px solid #e5e5e5", padding: "10px 12px", fontSize: 12, lineHeight: 1.7, color: "#444", marginTop: 7, whiteSpace: "pre-line", borderRadius: "2px" }}>{ans}</div>}
-          </div>
-
-          <CommentsSection articleId={article.id} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── ADMIN PANEL — Fixed typing bug using refs ─────────────────
-function AdminPanel({ articles, onSave, onDelete, onClose }) {
-  const [view, setView] = useState("list");
-  const [editing, setEditing] = useState(null);
-  const [category, setCategory] = useState("Economy");
-  const [featured, setFeatured] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(null);
-  const [aiLoading, setAiLoading] = useState(false);
-
-  // Use refs for all text inputs to fix the typing bug
-  const titleRef = useRef();
-  const excerptRef = useRef();
-  const contentRef = useRef();
-  const authorRef = useRef();
-  const readTimeRef = useRef();
-  const aiTopicRef = useRef();
-  const imageUrlRef = useRef();
-
-  const openNew = () => {
-    setEditing(null);
-    setCategory("Economy");
-    setFeatured(false);
-    setView("edit");
-    setTimeout(() => {
-      if (titleRef.current) titleRef.current.value = "";
-      if (excerptRef.current) excerptRef.current.value = "";
-      if (contentRef.current) contentRef.current.value = "";
-      if (authorRef.current) authorRef.current.value = "";
-      if (readTimeRef.current) readTimeRef.current.value = "3 min";
-      if (imageUrlRef.current) imageUrlRef.current.value = "";
-    }, 0);
-  };
-
-  const openEdit = (a) => {
-    setEditing(a);
-    setCategory(a.category);
-    setFeatured(a.featured || false);
-    setView("edit");
-    setTimeout(() => {
-      if (titleRef.current) titleRef.current.value = a.title || "";
-      if (excerptRef.current) excerptRef.current.value = a.excerpt || "";
-      if (contentRef.current) contentRef.current.value = a.content || "";
-      if (authorRef.current) authorRef.current.value = a.author || "";
-      if (readTimeRef.current) readTimeRef.current.value = a.read_time || "3 min";
-      if (imageUrlRef.current) imageUrlRef.current.value = a.image_url || "";
-    }, 0);
-  };
-
-  const handleAiFill = async () => {
-    if (!aiTopicRef.current?.value.trim()) return;
-    setAiLoading(true);
-    try {
-      const d = await aiGenArticle(aiTopicRef.current.value, category);
-      if (titleRef.current) titleRef.current.value = d.title || "";
-      if (excerptRef.current) excerptRef.current.value = d.excerpt || "";
-      if (contentRef.current) contentRef.current.value = d.content || "";
-      if (authorRef.current) authorRef.current.value = d.author || "";
-      if (readTimeRef.current) readTimeRef.current.value = d.read_time || "3 min";
-      if (aiTopicRef.current) aiTopicRef.current.value = "";
-    } catch (e) {
-      alert("AI fill failed: " + e.message);
-    }
-    setAiLoading(false);
-  };
-
-  const handleSave = async () => {
-    const title = titleRef.current?.value?.trim();
-    const content = contentRef.current?.value?.trim();
-    if (!title || !content) return alert("Title and Content are required!");
-    setSaving(true);
-    await onSave({
-      title,
-      excerpt: excerptRef.current?.value || "",
-      content,
-      author: authorRef.current?.value || "",
-      read_time: readTimeRef.current?.value || "3 min",
-      image_url: imageUrlRef.current?.dataset?.uploadedUrl || "",
-      category,
-      featured,
-    }, editing?.id);
-    setSaving(false);
-    setView("list");
-  };
-
-  const inputStyle = { width: "100%", border: "1px solid #ddd", borderRadius: "2px", padding: "9px 11px", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "Georgia, serif" };
-  const labelStyle = { fontSize: 10, fontWeight: 700, color: "#666", textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 4 };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 700, display: "flex", alignItems: "stretch", justifyContent: "flex-end" }}>
-      <div style={{ background: "#0d0d0d", width: 52, display: "flex", flexDirection: "column", alignItems: "center", padding: "16px 0", gap: 4 }}>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "#e63946", fontSize: 20, cursor: "pointer", marginBottom: 12 }}>×</button>
-        <button onClick={() => setView("list")} style={{ background: view === "list" ? "#e63946" : "none", border: "none", color: "#fff", width: 36, height: 36, borderRadius: "2px", cursor: "pointer", fontSize: 14 }}>☰</button>
-        <button onClick={openNew} style={{ background: view === "edit" && !editing ? "#e63946" : "none", border: "none", color: "#fff", width: 36, height: 36, borderRadius: "2px", cursor: "pointer", fontSize: 20 }}>+</button>
-      </div>
-      <div style={{ background: "#fff", width: "min(660px,90vw)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
-        <div style={{ background: "#111", color: "#fff", padding: "16px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "3px solid #e63946", flexShrink: 0 }}>
-          <div>
-            <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 18, fontWeight: 800 }}>Naija<span style={{ color: "#e63946" }}>Blog</span> Admin</div>
-            <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.15em", textTransform: "uppercase" }}>{view === "list" ? "All Articles" : editing ? "Edit Article" : "New Article"}</div>
-          </div>
-          <div style={{ fontSize: 11, color: "#444" }}>{articles.length} articles</div>
-        </div>
-
-        <div style={{ padding: "22px", flex: 1 }}>
-          {view === "list" && (
-            <div>
-              <button onClick={openNew} style={{ background: "#e63946", color: "#fff", border: "none", padding: "10px", borderRadius: "2px", cursor: "pointer", fontSize: 13, fontWeight: 700, width: "100%", marginBottom: 18 }}>+ Write New Article</button>
-              {articles.length === 0 && <div style={{ textAlign: "center", padding: 40, color: "#aaa" }}>No articles yet.</div>}
-              {articles.map(a => (
-                <div key={a.id} style={{ border: "1px solid #eee", borderRadius: "2px", padding: "12px 14px", marginBottom: 8, display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <div style={{ width: 44, height: 44, borderRadius: "2px", background: IMG_GRADIENTS[a.category] || IMG_GRADIENTS.Economy, flexShrink: 0 }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#111", marginBottom: 3, fontFamily: "'Playfair Display', Georgia, serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</div>
-                    <div style={{ fontSize: 10, color: "#bbb", display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      <span style={{ color: CAT_COLORS[a.category], fontWeight: 700 }}>{a.category}</span>
-                      <span>·</span><span>{a.author}</span>
-                      <span>·</span><span>👁 {a.views || 0} views</span>
-                      {a.featured && <span style={{ color: "#e63946", fontWeight: 700 }}>★ Featured</span>}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                    <button onClick={() => openEdit(a)} style={{ background: "#111", color: "#fff", border: "none", padding: "5px 12px", borderRadius: "2px", cursor: "pointer", fontSize: 11 }}>Edit</button>
-                    <button onClick={() => { setDeleting(a.id); onDelete(a.id).then(() => setDeleting(null)); }} disabled={deleting === a.id} style={{ background: "#fff", color: "#c1121f", border: "1px solid #c1121f", padding: "5px 10px", borderRadius: "2px", cursor: "pointer", fontSize: 11, opacity: deleting === a.id ? 0.5 : 1 }}>{deleting === a.id ? "…" : "Del"}</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {view === "edit" && (
-            <div>
-              <button onClick={() => setView("list")} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 12, marginBottom: 18, padding: 0 }}>← Back to list</button>
-
-              {/* AI Auto Fill */}
-              <div style={{ background: "#f8f8f6", border: "1px solid #eee", padding: "14px", borderRadius: "2px", marginBottom: 18 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.15em", color: "#bbb", textTransform: "uppercase", marginBottom: 8 }}>🤖 AI Auto-Fill</div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <input ref={aiTopicRef} placeholder="Enter a topic and AI writes the article…" style={{ flex: 1, border: "1px solid #ddd", borderRadius: "2px", padding: "8px 10px", fontSize: 12, outline: "none" }} />
-                  <button onClick={handleAiFill} disabled={aiLoading} style={{ background: "#111", color: "#fff", border: "none", padding: "8px 14px", borderRadius: "2px", cursor: "pointer", fontSize: 11, fontWeight: 700, opacity: aiLoading ? 0.5 : 1, whiteSpace: "nowrap" }}>{aiLoading ? "Writing…" : "✦ Fill"}</button>
-                </div>
-              </div>
-
-              {/* Title */}
-              <div style={{ marginBottom: 14 }}>
-                <label style={labelStyle}>Title *</label>
-                <input ref={titleRef} style={inputStyle} />
-              </div>
-
-              {/* Category */}
-              <div style={{ marginBottom: 14 }}>
-                <label style={labelStyle}>Category</label>
-                <select value={category} onChange={e => setCategory(e.target.value)} style={{ ...inputStyle, background: "#fff" }}>
-                  {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                </select>
-              </div>
-
-              {/* Excerpt */}
-              <div style={{ marginBottom: 14 }}>
-                <label style={labelStyle}>Excerpt</label>
-                <input ref={excerptRef} style={inputStyle} />
-              </div>
-
-              {/* Image Upload */}
-              <div style={{ marginBottom: 14 }}>
-                <label style={labelStyle}>Article Image</label>
-                <div style={{ border: "1px solid #ddd", borderRadius: "2px", padding: "12px", background: "#f8f8f6" }}>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    ref={imageUrlRef}
-                    onChange={async (e) => {
-                      const file = e.target.files[0];
-                      if (!file) return;
-                      const preview = document.getElementById("imgPreview");
-                      if (preview) preview.innerHTML = "<div style='color:#888;font-size:12px;margin-top:6px;'>Uploading image...</div>";
-                      try {
-                        const url = await uploadImage(file);
-                        if (preview) preview.innerHTML = `<div style='margin-top:8px;'><img src='${url}' style='width:100%;max-height:180px;object-fit:cover;border-radius:2px;'/><div style='font-size:11px;color:#40916c;margin-top:4px;'>✅ Image uploaded successfully!</div></div>`;
-                        imageUrlRef.current.dataset.uploadedUrl = url;
-                      } catch {
-                        if (preview) preview.innerHTML = "<div style='color:#c1121f;font-size:12px;margin-top:6px;'>❌ Upload failed. Try again.</div>";
-                      }
-                    }}
-                    style={{ width: "100%", fontSize: 13, cursor: "pointer" }}
-                  />
-                  <div style={{ fontSize: 11, color: "#aaa", marginTop: 6 }}>Upload image from your PC — JPG supported (see note below to enable PNG/GIF)</div>
-                  <div id="imgPreview" />
-                </div>
-              </div>
-
-              {/* Content */}
-              <div style={{ marginBottom: 14 }}>
-                <label style={labelStyle}>Full Content *</label>
-                <textarea ref={contentRef} rows={9} style={{ ...inputStyle, resize: "vertical" }} />
-              </div>
-
-              {/* Author */}
-              <div style={{ marginBottom: 14 }}>
-                <label style={labelStyle}>Author</label>
-                <input ref={authorRef} style={inputStyle} />
-              </div>
-
-              {/* Read Time */}
-              <div style={{ marginBottom: 14 }}>
-                <label style={labelStyle}>Read Time (e.g. 4 min)</label>
-                <input ref={readTimeRef} style={inputStyle} />
-              </div>
-
-              {/* Featured */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 22 }}>
-                <input type="checkbox" id="feat" checked={featured} onChange={e => setFeatured(e.target.checked)} style={{ width: 15, height: 15, cursor: "pointer" }} />
-                <label htmlFor="feat" style={{ fontSize: 12, color: "#444", cursor: "pointer" }}>★ Mark as Featured Story</label>
-              </div>
-
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={handleSave} disabled={saving} style={{ flex: 1, background: "#e63946", color: "#fff", border: "none", padding: 11, borderRadius: "2px", cursor: "pointer", fontSize: 13, fontWeight: 700, opacity: saving ? 0.6 : 1 }}>
-                  {saving ? "Saving…" : editing ? "Update Article" : "Publish Article"}
-                </button>
-                <button onClick={() => setView("list")} style={{ padding: "11px 18px", border: "1px solid #ddd", background: "#fff", borderRadius: "2px", cursor: "pointer", fontSize: 13, color: "#555" }}>Cancel</button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LoginModal({ onLogin, onClose }) {
-  const pwRef = useRef();
-  const [err, setErr] = useState("");
-  const handle = () => {
-    if (pwRef.current?.value === ADMIN_PASSWORD) { onLogin(); onClose(); }
-    else setErr("Incorrect password.");
-  };
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: "2px", maxWidth: 360, width: "100%", padding: "34px" }} onClick={e => e.stopPropagation()}>
-        <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 22, fontWeight: 800, color: "#111", marginBottom: 6 }}>Admin Login</div>
-        <div style={{ fontSize: 12, color: "#888", marginBottom: 20 }}>Enter your password to access the dashboard.</div>
-        <input ref={pwRef} type="password" placeholder="Password" onKeyDown={e => e.key === "Enter" && handle()}
-          style={{ width: "100%", border: "1px solid #ddd", borderRadius: "2px", padding: "11px 12px", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
-        {err && <div style={{ color: "#c1121f", fontSize: 12, marginBottom: 8 }}>{err}</div>}
-        <button onClick={handle} style={{ width: "100%", background: "#111", color: "#fff", border: "none", padding: 11, borderRadius: "2px", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>Enter Dashboard</button>
-      </div>
-    </div>
-  );
-}
-
-function HomePage({ articles, loading, isAdmin, onAdminOpen, onArticleClick, activeCategory, search }) {
-  const filtered = articles.filter(a => {
-    const matchCat = activeCategory === "All" || a.category === activeCategory;
-    const q = search.toLowerCase();
-    return matchCat && (!q || a.title.toLowerCase().includes(q) || (a.excerpt || "").toLowerCase().includes(q));
-  });
-  const featured = filtered.filter(a => a.featured).slice(0, 2);
-  const rest = filtered.filter(a => !featured.includes(a));
-
-  const Divider = ({ label }) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-      <span style={{ flex: 1, height: 1, background: "#ddd" }} />
-      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#bbb" }}>{label}</span>
-      <span style={{ flex: 1, height: 1, background: "#ddd" }} />
-    </div>
-  );
-
-  return (
-    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px 60px" }}>
-      {loading ? (
-        <div style={{ textAlign: "center", padding: 80, color: "#aaa" }}>
-          <div style={{ fontSize: 28, marginBottom: 10 }}>📰</div>
-          <div style={{ fontSize: 14 }}>Loading articles…</div>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 80 }}>
-          <div style={{ fontSize: 28, marginBottom: 10 }}>🔍</div>
-          <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#555" }}>No articles found</div>
-          {isAdmin && <button onClick={onAdminOpen} style={{ marginTop: 14, background: "#e63946", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "2px", cursor: "pointer", fontWeight: 700 }}>Write the first one</button>}
-        </div>
-      ) : (
-        <>
-          {featured.length > 0 && (
-            <>
-              <Divider label="Featured Stories" />
-              <div style={{ display: "grid", gridTemplateColumns: featured.length === 1 ? "1fr" : "1fr 1fr", gap: 18, marginBottom: 32 }}>
-                {featured.map(a => <ArticleCard key={a.id} article={a} onClick={onArticleClick} />)}
-              </div>
-            </>
-          )}
-          {rest.length > 0 && (
-            <>
-              {featured.length > 0 && <Divider label="Latest News" />}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 18 }}>
-                {rest.map(a => <ArticleCard key={a.id} article={a} onClick={onArticleClick} />)}
-              </div>
-            </>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-export default function App() {
+function App() {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState("Home");
-  const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [selectedArticle, setSelectedArticle] = useState(null);
-  const [showAdmin, setShowAdmin] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentArticle, setCurrentArticle] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  // Page Navigation State ('home', 'admin', 'privacy', 'terms', 'contact')
+  const [currentView, setCurrentView] = useState('home');
+
+  // Admin & Security State
   const [isAdmin, setIsAdmin] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [adminAuthenticated, setAdminAuthenticated] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const ADMIN_SECRET = 'admin123';
 
-  const showToast = (msg, type = "success") => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
+  // New/Edit Article Form State
+  const [editingId, setEditingId] = useState(null);
+  const [newTitle, setNewTitle] = useState('');
+  const [newCategory, setNewCategory] = useState('Economy');
+  const [newAuthor, setNewAuthor] = useState('Idongesit');
+  const [newImageUrl, setNewImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [newExcerpt, setNewExcerpt] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [newFeatured, setNewFeatured] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Load articles, and if the URL is a direct /article/:id link, open that article + count a view
+  const articlesPerPage = 9;
+
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      let data;
-      if (isSupabaseConnected) {
-        data = await sb.getArticles();
-        data = data.length ? data : SEED;
-      } else { data = SEED; }
-      setArticles(data);
-      setLoading(false);
-
-      const match = window.location.pathname.match(/^\/article\/([\w-]+)/);
-      if (match) {
-        const found = data.find(a => String(a.id) === match[1]);
-        if (found) {
-          setSelectedArticle(found);
-          if (isSupabaseConnected) {
-            sb.incrementViews(found.id, found.views).catch(() => {});
-            setArticles(prev => prev.map(x => x.id === found.id ? { ...x, views: (x.views || 0) + 1 } : x));
-          }
-        }
-      }
-    })();
+    fetchArticles();
   }, []);
 
-  useEffect(() => {
-    if (page.startsWith("cat:")) { setActiveCategory(page.replace("cat:", "")); setPage("Home"); }
-    else if (page === "Home") setActiveCategory("All");
-  }, [page]);
+  async function fetchArticles() {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('articles')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-  const handleSave = async (form, id) => {
-    if (isSupabaseConnected) {
-      if (id) { const u = await sb.updateArticle(id, form); setArticles(prev => prev.map(a => a.id === id ? { ...a, ...u } : a)); showToast("Article updated!"); }
-      else { const c = await sb.insertArticle({ ...form, created_at: new Date().toISOString(), views: 0 }); setArticles(prev => [c, ...prev]); showToast("Article published!"); }
+      if (error) console.error('Error fetching articles:', error.message);
+      else setArticles(data || []);
+    } catch (err) {
+      console.error('Unexpected error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleAdminLogin = (e) => {
+    e.preventDefault();
+    if (passwordInput === ADMIN_SECRET) {
+      setAdminAuthenticated(true);
+      setPasswordInput('');
     } else {
-      if (id) { setArticles(prev => prev.map(a => a.id === id ? { ...a, ...form } : a)); showToast("Updated (demo mode)"); }
-      else { setArticles(prev => [{ ...form, id: Date.now(), created_at: new Date().toISOString(), views: 0 }, ...prev]); showToast("Published (demo mode)"); }
+      alert('Incorrect admin password!');
+      setPasswordInput('');
     }
   };
 
-  const handleDelete = async (id) => {
-    if (isSupabaseConnected) await sb.deleteArticle(id);
-    setArticles(prev => prev.filter(a => a.id !== id));
-    showToast("Article deleted");
-  };
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  const onAdminClick = () => isAdmin ? setShowAdmin(true) : setShowLogin(true);
-
-  // Open an article: show modal, update the URL bar so it's shareable, and count a view
-  const openArticle = (a) => {
-    setSelectedArticle(a);
-    window.history.pushState({}, "", `/article/${a.id}`);
-    if (isSupabaseConnected) {
-      sb.incrementViews(a.id, a.views).catch(() => {});
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Please choose an image smaller than 2MB for optimal performance.');
+      return;
     }
-    setArticles(prev => prev.map(x => x.id === a.id ? { ...x, views: (x.views || 0) + 1 } : x));
+
+    setUploadingImage(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setNewImageUrl(reader.result);
+      setUploadingImage(false);
+    };
+    reader.onerror = () => {
+      alert('Failed to read image file.');
+      setUploadingImage(false);
+    };
+    reader.readAsDataURL(file);
   };
 
-  // Close article: hide modal, restore the URL to home
-  const closeArticle = () => {
-    setSelectedArticle(null);
-    window.history.pushState({}, "", "/");
+  const handleSaveArticle = async (e) => {
+    e.preventDefault();
+    if (!newTitle || !newContent) {
+      alert('Please fill in at least the title and content.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      if (editingId) {
+        const { error } = await supabase
+          .from('articles')
+          .update({
+            title: newTitle,
+            category: newCategory,
+            author: newAuthor,
+            image_url: newImageUrl,
+            excerpt: newExcerpt,
+            content: newContent,
+            featured: newFeatured
+          })
+          .eq('id', editingId);
+
+        if (error) {
+          alert('Error updating article: ' + error.message);
+        } else {
+          alert('Article updated successfully!');
+          resetForm();
+          fetchArticles();
+        }
+      } else {
+        const { error } = await supabase.from('articles').insert([
+          {
+            title: newTitle,
+            category: newCategory,
+            author: newAuthor,
+            image_url: newImageUrl,
+            excerpt: newExcerpt,
+            content: newContent,
+            featured: newFeatured,
+            created_at: new Date().toISOString()
+          }
+        ]);
+
+        if (error) {
+          alert('Error creating article: ' + error.message);
+        } else {
+          alert('Article published successfully!');
+          resetForm();
+          fetchArticles();
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const handleEditClick = (art) => {
+    setEditingId(art.id);
+    setNewTitle(art.title || '');
+    setNewCategory(art.category || 'Economy');
+    setNewAuthor(art.author || 'Idongesit');
+    setNewImageUrl(art.image_url || '');
+    setNewExcerpt(art.excerpt || '');
+    setNewContent(art.content || '');
+    setNewFeatured(art.featured || false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setNewTitle('');
+    setNewExcerpt('');
+    setNewContent('');
+    setNewImageUrl('');
+    setNewFeatured(false);
+  };
+
+  const handleDeleteArticle = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this article?')) return;
+    try {
+      const { error } = await supabase.from('articles').delete().eq('id', id);
+      if (error) alert('Error deleting: ' + error.message);
+      else {
+        if (editingId === id) resetForm();
+        fetchArticles();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const categories = ['All', ...new Set(articles.map((item) => item.category).filter(Boolean))];
+
+  const filteredArticles = articles.filter((article) => {
+    const matchesCategory = selectedCategory === 'All' || article.category === selectedCategory;
+    const matchesSearch = (article.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+                          (article.content?.toLowerCase() || '').includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  const indexOfLastArticle = currentPage * articlesPerPage;
+  const indexOfFirstArticle = indexOfLastArticle - articlesPerPage;
+  const currentArticles = filteredArticles.slice(indexOfFirstArticle, indexOfLastArticle);
+  const totalPages = Math.ceil(filteredArticles.length / articlesPerPage);
+
+  const featuredArticle = articles.find((art) => art.featured) || articles[0];
+  const breakingNews = articles.slice(0, 10);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f4f0", fontFamily: "Georgia, serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&display=swap'); * { box-sizing: border-box; }`}</style>
-      <Header page={page} setPage={setPage} search={search} setSearch={setSearch} isAdmin={isAdmin} onAdminClick={onAdminClick} />
-      {page === "Home" && <HomePage articles={articles} loading={loading} isAdmin={isAdmin} onAdminOpen={() => setShowAdmin(true)} onArticleClick={openArticle} activeCategory={activeCategory} search={search} />}
-      {page === "About" && <AboutPage />}
-      {page === "Contact" && <ContactPage />}
-      {page === "Privacy Policy" && <PrivacyPage />}
-      <Footer setPage={setPage} />
-      {selectedArticle && <ArticleModal article={selectedArticle} onClose={closeArticle} />}
-      {showLogin && <LoginModal onLogin={() => setIsAdmin(true)} onClose={() => setShowLogin(false)} />}
-      {showAdmin && isAdmin && <AdminPanel articles={articles} onSave={handleSave} onDelete={handleDelete} onClose={() => setShowAdmin(false)} />}
-      {toast && <Toast msg={toast.msg} type={toast.type} />}
+    <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-600 selection:text-white flex flex-col justify-between">
+      
+      <style>{`
+        @keyframes ticker {
+          0% { transform: translate3d(0, 0, 0); }
+          100% { transform: translate3d(-50%, 0, 0); }
+        }
+        .animate-ticker {
+          display: flex;
+          width: max-content;
+          animation: ticker 35s linear infinite;
+        }
+        .animate-ticker:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
+
+      <div>
+        {/* Ticker Bar */}
+        <div className="bg-slate-900 text-slate-300 text-xs py-2.5 px-4 border-b border-slate-800 overflow-hidden flex items-center">
+          <div className="bg-blue-600 text-white px-2.5 py-1 rounded font-bold uppercase tracking-wider text-[10px] shrink-0 z-10 mr-4 shadow-sm">
+            LIVE FEED
+          </div>
+          <div className="overflow-hidden w-full relative">
+            <div className="animate-ticker flex space-x-12 cursor-pointer items-center">
+              {[...breakingNews, ...breakingNews].map((art, idx) => (
+                <span 
+                  key={idx} 
+                  onClick={() => { setCurrentView('home'); setIsAdmin(false); setCurrentArticle(art); window.scrollTo(0,0); }}
+                  className="hover:text-blue-400 transition-colors flex items-center gap-2 whitespace-nowrap"
+                >
+                  <span className="text-blue-500 font-bold">&bull;</span> {art.title}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Header */}
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-50 backdrop-blur-md bg-white/90">
+          <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="cursor-pointer text-center md:text-left" onClick={() => { setCurrentView('home'); setIsAdmin(false); setAdminAuthenticated(false); setCurrentArticle(null); setSelectedCategory('All'); window.scrollTo(0,0); }}>
+              <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900">
+                Naijablog<span className="text-blue-600">.</span>
+              </h1>
+              <p className="text-slate-500 text-xs tracking-wider uppercase font-semibold mt-0.5">Journalism & Perspectives</p>
+            </div>
+
+            {currentView === 'home' && !isAdmin && (
+              <div className="w-full md:w-80 relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Search stories..."
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-full bg-slate-100 text-slate-900 placeholder-slate-400 border border-transparent focus:border-blue-600 focus:bg-white focus:outline-none text-sm transition-all shadow-inner"
+                />
+              </div>
+            )}
+          </div>
+
+          {currentView === 'home' && !isAdmin && (
+            <div className="border-t border-slate-100 px-6 py-2 bg-slate-50/50">
+              <div className="max-w-7xl mx-auto flex flex-wrap gap-2 justify-center md:justify-start items-center">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => { setSelectedCategory(cat); setCurrentPage(1); setCurrentArticle(null); window.scrollTo(0,0); }}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-all ${
+                      selectedCategory === cat
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
+                    }`}
+                  >
+                    {cat.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </header>
+
+        {/* Main Content Area */}
+        <main className="max-w-7xl mx-auto px-6 py-10">
+          {loading ? (
+            <div className="text-center py-32">
+              <div className="inline-block animate-spin rounded-full h-10 w-10 border-3 border-blue-600 border-t-transparent mb-4"></div>
+              <p className="text-slate-500 font-medium text-sm">Loading stories...</p>
+            </div>
+          ) : currentView === 'privacy' ? (
+            <div className="max-w-3xl mx-auto py-6 space-y-6">
+              <button onClick={() => { setCurrentView('home'); window.scrollTo(0,0); }} className="text-xs font-bold text-blue-600 hover:underline">&larr; Back to Home</button>
+              <h2 className="text-3xl font-black text-slate-900">Privacy Policy for Naijablog</h2>
+              <p className="text-sm text-slate-500">Last updated: September 2026</p>
+              <div className="prose max-w-none text-slate-700 text-sm leading-relaxed space-y-4">
+                <p>At Naijablog, accessible from naijablog.vercel.app, one of our main priorities is the privacy of our visitors. This Privacy Policy document contains types of information that is collected and recorded by Naijablog and how we use it.</p>
+                <h3 className="text-lg font-bold text-slate-900 pt-2">Log Files</h3>
+                <p>Naijablog follows a standard procedure of using log files. These files log visitors when they visit websites. The information collected includes internet protocol (IP) addresses, browser type, Internet Service Provider (ISP), date and time stamp, referring/exit pages, and possibly the number of clicks.</p>
+                <h3 className="text-lg font-bold text-slate-900 pt-2">Google DoubleClick DART Cookie</h3>
+                <p>Google is one of a third-party vendor on our site. It also uses cookies, known as DART cookies, to serve ads to our site visitors based upon their visit to our website and other sites on the internet.</p>
+              </div>
+            </div>
+          ) : currentView === 'terms' ? (
+            <div className="max-w-3xl mx-auto py-6 space-y-6">
+              <button onClick={() => { setCurrentView('home'); window.scrollTo(0,0); }} className="text-xs font-bold text-blue-600 hover:underline">&larr; Back to Home</button>
+              <h2 className="text-3xl font-black text-slate-900">Terms of Service</h2>
+              <p className="text-sm text-slate-500">Last updated: September 2026</p>
+              <div className="prose max-w-none text-slate-700 text-sm leading-relaxed space-y-4">
+                <p>Welcome to Naijablog! These terms and conditions outline the rules and regulations for the use of Naijablog's Website.</p>
+                <p>By accessing this website we assume you accept these terms and conditions. Do not continue to use Naijablog if you do not agree to all of the terms and conditions stated on this page.</p>
+                <h3 className="text-lg font-bold text-slate-900 pt-2">License</h3>
+                <p>Unless otherwise stated, Naijablog and/or its licensors own the intellectual property rights for all material on Naijablog. All intellectual property rights are reserved.</p>
+              </div>
+            </div>
+          ) : currentView === 'contact' ? (
+            <div className="max-w-3xl mx-auto py-6 space-y-6">
+              <button onClick={() => { setCurrentView('home'); window.scrollTo(0,0); }} className="text-xs font-bold text-blue-600 hover:underline">&larr; Back to Home</button>
+              <h2 className="text-3xl font-black text-slate-900">Contact Us</h2>
+              <p className="text-sm text-slate-500">Get in touch with our team</p>
+              <div className="prose max-w-none text-slate-700 text-sm leading-relaxed space-y-4">
+                <p>We would love to hear from you! If you have any questions, feedback, content suggestions, or partnership inquiries regarding Naijablog, please reach out to our editorial team.</p>
+                <p>You can send us an email directly at <strong className="text-slate-900">support@naijablog.vercel.app</strong> or reach out through our official social media channels. We strive to respond within 24 to 48 hours.</p>
+              </div>
+            </div>
+          ) : isAdmin && !adminAuthenticated ? (
+            <div className="max-w-md mx-auto py-16">
+              <div className="bg-slate-50 p-8 rounded-2xl border border-slate-200 shadow-sm text-center">
+                <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">
+                  🔒
+                </div>
+                <h2 className="text-xl font-black text-slate-900 mb-2">Admin Portal Login</h2>
+                <p className="text-xs text-slate-500 mb-6">Enter your administrator passcode to access the dashboard.</p>
+                
+                <form onSubmit={handleAdminLogin} className="space-y-4">
+                  <input
+                    type="password"
+                    required
+                    placeholder="Enter passcode (admin123)"
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg bg-white border border-slate-300 text-sm focus:outline-none focus:border-blue-600 text-center"
+                  />
+                  <button
+                    type="submit"
+                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-all"
+                  >
+                    Authenticate
+                  </button>
+                </form>
+
+                <button
+                  onClick={() => { setIsAdmin(false); setCurrentView('home'); }}
+                  className="mt-6 text-xs text-slate-500 hover:text-slate-900 font-medium"
+                >
+                  &larr; Return to Homepage
+                </button>
+              </div>
+            </div>
+          ) : isAdmin && adminAuthenticated ? (
+            <div className="max-w-4xl mx-auto">
+              <div className="flex justify-between items-center mb-8 pb-4 border-b border-slate-200">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900">Admin Dashboard</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Publish new stories, edit existing records, and manage content.</p>
+                </div>
+                <button 
+                  onClick={() => { setIsAdmin(false); setAdminAuthenticated(false); setCurrentView('home'); }}
+                  className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition-all"
+                >
+                  &larr; Log Out & Exit
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveArticle} className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-200 mb-12 shadow-sm space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-bold text-slate-900">
+                    {editingId ? '✏️ Edit Article' : '✨ Publish New Article'}
+                  </h3>
+                  {editingId && (
+                    <button
+                      type="button"
+                      onClick={resetForm}
+                      className="text-xs text-red-600 hover:underline font-semibold"
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
+                </div>
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Article Title</label>
+                    <input
+                      type="text"
+                      required
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      placeholder="Enter headline..."
+                      className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-300 text-sm focus:outline-none focus:border-blue-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Category</label>
+                    <select
+                      value={newCategory}
+                      onChange={(e) => setNewCategory(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-300 text-sm focus:outline-none focus:border-blue-600"
+                    >
+                      <option value="Economy">Economy</option>
+                      <option value="Entertainment">Entertainment</option>
+                      <option value="Politics">Politics</option>
+                      <option value="Health">Health</option>
+                      <option value="Technology">Technology</option>
+                      <option value="Jobs">Jobs</option>
+                      <option value="Tribe">Tribe</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Author Name</label>
+                    <input
+                      type="text"
+                      value={newAuthor}
+                      onChange={(e) => setNewAuthor(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-300 text-sm focus:outline-none focus:border-blue-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Upload Image File</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 bg-white border border-slate-300 rounded-lg cursor-pointer"
+                    />
+                    {uploadingImage && <p className="text-[11px] text-blue-600 mt-1 font-medium">Processing image...</p>}
+                    {newImageUrl && (
+                      <div className="mt-2 flex items-center gap-3">
+                        <img src={newImageUrl} alt="Preview" className="w-12 h-12 object-cover rounded border border-slate-200" />
+                        <span className="text-[11px] text-green-600 font-semibold">✓ Image loaded successfully</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Short Excerpt</label>
+                  <input
+                    type="text"
+                    value={newExcerpt}
+                    onChange={(e) => setNewExcerpt(e.target.value)}
+                    placeholder="Brief summary..."
+                    className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-300 text-sm focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Full Content</label>
+                  <textarea
+                    required
+                    rows="6"
+                    value={newContent}
+                    onChange={(e) => setNewContent(e.target.value)}
+                    placeholder="Write full article here..."
+                    className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-300 text-sm focus:outline-none focus:border-blue-600"
+                  ></textarea>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="featured"
+                    checked={newFeatured}
+                    onChange={(e) => setNewFeatured(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                  />
+                  <label htmlFor="featured" className="text-xs font-bold text-slate-700 uppercase">Set as Featured Hero Story</label>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-all shadow-sm"
+                >
+                  {submitting ? 'Saving...' : editingId ? 'Update Article' : 'Publish Article'}
+                </button>
+              </form>
+
+              <h3 className="text-lg font-bold text-slate-900 mb-4">Manage Stories ({articles.length})</h3>
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+                  {articles.map((art) => (
+                    <div key={art.id} className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
+                      <div className="min-w-0 flex items-center gap-3">
+                        {art.image_url && <img src={art.image_url} alt="" className="w-10 h-10 object-cover rounded shrink-0" />}
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-sm text-slate-900 truncate">{art.title}</h4>
+                          <p className="text-xs text-slate-500">{art.category} &bull; {new Date(art.created_at).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => handleEditClick(art)}
+                          className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded text-xs font-bold transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteArticle(art.id)}
+                          className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded text-xs font-bold transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : currentArticle ? (
+            <article className="max-w-3xl mx-auto py-4">
+              <button 
+                onClick={() => { setCurrentArticle(null); window.scrollTo(0,0); }}
+                className="mb-8 text-slate-600 hover:text-blue-600 text-xs font-bold tracking-wider uppercase transition-colors flex items-center gap-2"
+              >
+                &larr; Back to all stories
+              </button>
+
+              <span className="inline-block text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-md mb-4 uppercase tracking-widest">
+                {currentArticle.category}
+              </span>
+
+              <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight tracking-tight">
+                {currentArticle.title}
+              </h2>
+
+              <div className="flex items-center justify-between text-xs text-slate-500 border-y border-slate-200 py-4 mb-8">
+                <span>By <strong className="text-slate-800">{currentArticle.author || 'Editorial Team'}</strong></span>
+                <span>{currentArticle.created_at ? new Date(currentArticle.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''} &bull; {currentArticle.read_time || '4 min read'}</span>
+              </div>
+
+              {currentArticle.image_url && (
+                <div className="mb-10 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
+                  <img src={currentArticle.image_url} alt={currentArticle.title} className="w-full object-cover max-h-[480px]" />
+                </div>
+              )}
+
+              <div className="prose max-w-none text-slate-700 text-lg leading-relaxed space-y-6 whitespace-pre-line font-normal">
+                {currentArticle.content}
+              </div>
+            </article>
+          ) : (
+            <>
+              {selectedCategory === 'All' && !searchQuery && featuredArticle && (
+                <div 
+                  onClick={() => { setCurrentArticle(featuredArticle); window.scrollTo(0,0); }}
+                  className="mb-16 bg-slate-900 text-white rounded-3xl overflow-hidden shadow-2xl grid md:grid-cols-2 cursor-pointer group transition-transform duration-300 hover:scale-[1.01]"
+                >
+                  <div className="p-8 md:p-12 flex flex-col justify-between">
+                    <div>
+                      <span className="inline-block px-3 py-1 text-[10px] font-bold bg-blue-600 text-white rounded-md mb-6 uppercase tracking-widest">
+                        Featured Story
+                      </span>
+                      <h2 className="text-2xl md:text-4xl font-bold mb-4 group-hover:text-blue-400 transition-colors leading-snug">
+                        {featuredArticle.title}
+                      </h2>
+                      <p className="text-slate-400 mb-8 line-clamp-3 text-sm leading-relaxed">{featuredArticle.excerpt || featuredArticle.content}</p>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-slate-400 border-t border-slate-800 pt-5">
+                      <span>{featuredArticle.author || 'Editorial'}</span>
+                      <span className="font-bold text-white group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">Read article &rarr;</span>
+                    </div>
+                  </div>
+                  {featuredArticle.image_url ? (
+                    <div className="h-72 md:h-auto bg-slate-800 overflow-hidden">
+                      <img src={featuredArticle.image_url} alt={featuredArticle.title} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  ) : (
+                    <div className="bg-slate-800 flex items-center justify-center p-8 text-slate-500 italic">
+                      Naijablog
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-between items-center mb-8 border-b border-slate-200 pb-4">
+                <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+                  {selectedCategory === 'All' ? 'Latest Stories' : `${selectedCategory}`}
+                </h3>
+                <span className="text-xs text-slate-500 font-medium">
+                  {filteredArticles.length} stories available
+                </span>
+              </div>
+
+              {filteredArticles.length === 0 ? (
+                <div className="text-center py-20 bg-slate-50 rounded-2xl border border-slate-200">
+                  <p className="text-slate-500 text-sm">No stories found.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {currentArticles.map((article) => (
+                      <article 
+                        key={article.id} 
+                        onClick={() => { setCurrentArticle(article); window.scrollTo(0,0); }}
+                        className="bg-white rounded-2xl border border-slate-200/80 hover:border-slate-300 transition-all duration-300 flex flex-col justify-between overflow-hidden cursor-pointer group shadow-sm hover:shadow-md"
+                      >
+                        {article.image_url ? (
+                          <div className="h-48 bg-slate-100 overflow-hidden relative">
+                            <img src={article.image_url} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          </div>
+                        ) : (
+                          <div className="h-48 bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-semibold">
+                            Naijablog
+                          </div>
+                        )}
+                        <div className="p-6 flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded uppercase tracking-wider">
+                                {article.category || 'General'}
+                              </span>
+                              <span className="text-[11px] text-slate-400">{article.read_time || '3 min'}</span>
+                            </div>
+                            <h4 className="font-bold text-base mb-2 text-slate-900 group-hover:text-blue-600 transition-colors leading-snug line-clamp-2">
+                              {article.title}
+                            </h4>
+                            <p className="text-slate-500 text-xs mb-6 line-clamp-3 leading-relaxed">
+                              {article.excerpt || article.content}
+                            </p>
+                          </div>
+                          <div className="pt-4 border-t border-slate-100 flex justify-between items-center text-[11px] text-slate-400">
+                            <span>{article.author || 'Staff'}</span>
+                            <span>{article.created_at ? new Date(article.created_at).toLocaleDateString() : ''}</span>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+
+                  {totalPages > 1 && (
+                    <div className="flex justify-center items-center gap-3 mt-12">
+                      <button
+                        disabled={currentPage === 1}
+                        onClick={() => { setCurrentPage(prev => Math.max(prev - 1, 1)); window.scrollTo(0,0); }}
+                        className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 disabled:opacity-40 text-xs font-bold hover:bg-slate-50 transition-all"
+                      >
+                        Previous
+                      </button>
+                      <span className="text-xs text-slate-600 font-medium px-3">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button
+                        disabled={currentPage === totalPages}
+                        onClick={() => { setCurrentPage(prev => Math.min(prev + 1, totalPages)); window.scrollTo(0,0); }}
+                        className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 disabled:opacity-40 text-xs font-bold hover:bg-slate-50 transition-all"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </main>
+      </div>
+
+      {/* Footer with Google AdSense Required Policy Links */}
+      <footer className="bg-slate-900 text-slate-400 border-t border-slate-800 py-12 text-xs">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+          <div>
+            <span className="text-white font-bold text-base">Naijablog<span className="text-blue-600">.</span></span>
+            <p className="mt-1 text-slate-500">Clean, verified current affairs and news.</p>
+          </div>
+          <div className="flex flex-wrap gap-4 text-slate-400 font-medium items-center justify-center">
+            <button onClick={() => { setCurrentView('home'); setIsAdmin(false); setSelectedCategory('All'); setCurrentArticle(null); window.scrollTo(0,0); }} className="hover:text-white transition-colors">Home</button>
+            <span className="text-slate-700">&bull;</span>
+            <button onClick={() => { setCurrentView('privacy'); window.scrollTo(0,0); }} className="hover:text-white transition-colors">Privacy Policy</button>
+            <span className="text-slate-700">&bull;</span>
+            <button onClick={() => { setCurrentView('terms'); window.scrollTo(0,0); }} className="hover:text-white transition-colors">Terms of Service</button>
+            <span className="text-slate-700">&bull;</span>
+            <button onClick={() => { setCurrentView('contact'); window.scrollTo(0,0); }} className="hover:text-white transition-colors">Contact Us</button>
+            <span className="text-slate-700">&bull;</span>
+            <button onClick={() => { setIsAdmin(true); setCurrentView('home'); window.scrollTo(0,0); }} className="text-blue-400 hover:text-blue-300 font-bold transition-colors">Admin Portal</button>
+          </div>
+          <div className="text-slate-500">
+            &copy; {new Date().getFullYear()} Naijablog
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
+
+export default App;
