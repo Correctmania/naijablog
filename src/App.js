@@ -341,7 +341,7 @@ function App() {
                   <input
                     type="password"
                     required
-                    placeholder="Enter passcode (admin123)"
+                    placeholder="Enter administrator passcode"
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
                     className="w-full px-4 py-3 rounded-lg bg-white border border-slate-300 text-sm focus:outline-none focus:border-blue-600 text-center"
