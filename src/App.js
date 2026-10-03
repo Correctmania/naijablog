@@ -75,7 +75,7 @@ function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Handle URL parameters for direct links & browser back/forward buttons
+  // Handle URL parameters for direct unique article links & browser back/forward buttons
   useEffect(() => {
     const handleUrlRoute = () => {
       const params = new URLSearchParams(window.location.search);
@@ -87,6 +87,8 @@ function App() {
         if (found) {
           setCurrentArticle(found);
           incrementViewsSilently(found);
+        } else {
+          setCurrentArticle(null);
         }
       } else if (viewParam === 'admin') {
         setCurrentView('home');
@@ -104,6 +106,20 @@ function App() {
     if (!loading) {
       handleUrlRoute();
     }
+
+    // Listen to browser popstate (back/forward buttons)
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const articleId = params.get('id');
+      if (articleId && articles.length > 0) {
+        const found = articles.find(a => String(a.id) === String(articleId));
+        if (found) setCurrentArticle(found);
+      } else {
+        setCurrentArticle(null);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
   }, [loading, articles]);
 
   async function fetchArticles() {
@@ -544,7 +560,7 @@ function App() {
               <form onSubmit={handleSaveArticle} className={`p-6 md:p-8 rounded-2xl border mb-12 shadow-sm space-y-6 ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="flex justify-between items-center">
                   <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                    {editingId ? '✏️️ Edit Article' : '✨ Publish New Article'}
+                    {editingId ? '✏ Edit Article' : '✨ Publish New Article'}
                   </h3>
                   {editingId && (
                     <button
@@ -764,7 +780,7 @@ function App() {
                   <button 
                     onClick={() => {
                       navigator.clipboard.writeText(window.location.href);
-                      alert('Direct article link copied to clipboard!');
+                      alert('Unique article link copied to clipboard!');
                     }}
                     className={`px-3 py-1.5 rounded text-xs font-bold border transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'}`}
                   >
