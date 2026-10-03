@@ -75,6 +75,37 @@ function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Handle URL parameters for direct links & browser back/forward buttons
+  useEffect(() => {
+    const handleUrlRoute = () => {
+      const params = new URLSearchParams(window.location.search);
+      const articleId = params.get('id');
+      const viewParam = params.get('view');
+
+      if (articleId && articles.length > 0) {
+        const found = articles.find(a => String(a.id) === String(articleId));
+        if (found) {
+          setCurrentArticle(found);
+          incrementViewsSilently(found);
+        }
+      } else if (viewParam === 'admin') {
+        setCurrentView('home');
+        setIsAdmin(true);
+        setCurrentArticle(null);
+      } else if (viewParam === 'privacy' || viewParam === 'terms' || viewParam === 'contact') {
+        setCurrentView(viewParam);
+        setCurrentArticle(null);
+      } else {
+        setCurrentArticle(null);
+        setIsAdmin(false);
+      }
+    };
+
+    if (!loading) {
+      handleUrlRoute();
+    }
+  }, [loading, articles]);
+
   async function fetchArticles() {
     try {
       setLoading(true);
@@ -90,6 +121,18 @@ function App() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function incrementViewsSilently(art) {
+    const currentViews = art.views || 0;
+    const updatedViews = currentViews + 1;
+    
+    setArticles(prev => prev.map(a => a.id === art.id ? { ...a, views: updatedViews } : a));
+    
+    await supabase
+      .from('articles')
+      .update({ views: updatedViews })
+      .eq('id', art.id);
   }
 
   const handleAdminLogin = (e) => {
@@ -130,7 +173,6 @@ function App() {
     const currentLikes = art.likes || 0;
     const updatedLikes = currentLikes + 1;
 
-    // Optimistic UI update
     setArticles(articles.map(a => a.id === art.id ? { ...a, likes: updatedLikes } : a));
     if (currentArticle && currentArticle.id === art.id) {
       setCurrentArticle({ ...currentArticle, likes: updatedLikes });
@@ -142,21 +184,34 @@ function App() {
       .eq('id', art.id);
   };
 
-  const handleArticleClick = async (art) => {
+  const handleArticleClick = (art) => {
     setCurrentArticle(art);
     window.scrollTo(0, 0);
 
-    // Increment views counter
-    const currentViews = art.views || 0;
-    const updatedViews = currentViews + 1;
-    
-    setArticles(articles.map(a => a.id === art.id ? { ...a, views: updatedViews } : a));
-    setCurrentArticle(prev => prev ? { ...prev, views: updatedViews } : prev);
+    const newUrl = `${window.location.pathname}?id=${art.id}`;
+    window.history.pushState({ id: art.id }, '', newUrl);
 
-    await supabase
-      .from('articles')
-      .update({ views: updatedViews })
-      .eq('id', art.id);
+    incrementViewsSilently(art);
+  };
+
+  const handleBackToHome = () => {
+    setCurrentArticle(null);
+    setIsAdmin(false);
+    setCurrentView('home');
+    window.history.pushState({}, '', window.location.pathname);
+    window.scrollTo(0, 0);
+  };
+
+  const navigateToView = (viewName) => {
+    setCurrentArticle(null);
+    if (viewName === 'admin') {
+      setIsAdmin(true);
+    } else {
+      setIsAdmin(false);
+      setCurrentView(viewName);
+    }
+    window.history.pushState({}, '', `${window.location.pathname}?view=${viewName}`);
+    window.scrollTo(0, 0);
   };
 
   const handleSaveArticle = async (e) => {
@@ -312,7 +367,7 @@ function App() {
               {[...breakingNews, ...breakingNews].map((art, idx) => (
                 <span 
                   key={idx} 
-                  onClick={() => { setCurrentView('home'); setIsAdmin(false); handleArticleClick(art); }}
+                  onClick={() => handleArticleClick(art)}
                   className="hover:text-blue-400 transition-colors flex items-center gap-2 whitespace-nowrap"
                 >
                   <span className="text-blue-500 font-bold">&bull;</span> {art.title}
@@ -325,7 +380,7 @@ function App() {
         {/* Header */}
         <header className={`border-b sticky top-0 z-50 backdrop-blur-md transition-colors ${darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'}`}>
           <div className="max-w-7xl mx-auto px-6 py-5 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="cursor-pointer text-center md:text-left flex items-center justify-between w-full md:w-auto" onClick={() => { setCurrentView('home'); setIsAdmin(false); setAdminAuthenticated(false); setCurrentArticle(null); setSelectedCategory('All'); window.scrollTo(0,0); }}>
+            <div className="cursor-pointer text-center md:text-left flex items-center justify-between w-full md:w-auto" onClick={handleBackToHome}>
               <div>
                 <h1 className={`text-3xl md:text-4xl font-black tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                   Naijablog<span className="text-blue-600">.</span>
@@ -342,7 +397,7 @@ function App() {
             </div>
 
             <div className="flex items-center gap-4 w-full md:w-auto justify-between">
-              {currentView === 'home' && !isAdmin && (
+              {currentView === 'home' && !isAdmin && !currentArticle && (
                 <div className="w-full md:w-80 relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">🔍</span>
                   <input
@@ -364,13 +419,13 @@ function App() {
             </div>
           </div>
 
-          {currentView === 'home' && !isAdmin && (
+          {currentView === 'home' && !isAdmin && !currentArticle && (
             <div className={`border-t px-6 py-2 transition-colors ${darkMode ? 'border-slate-800 bg-slate-900/50' : 'border-slate-100 bg-slate-50/50'}`}>
               <div className="max-w-7xl mx-auto flex flex-wrap gap-2 justify-center md:justify-start items-center">
                 {categories.map((cat) => (
                   <button
                     key={cat}
-                    onClick={() => { setSelectedCategory(cat); setCurrentPage(1); setCurrentArticle(null); window.scrollTo(0,0); }}
+                    onClick={() => { setSelectedCategory(cat); setCurrentPage(1); window.scrollTo(0,0); }}
                     className={`px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-all ${
                       selectedCategory === cat
                         ? 'bg-blue-600 text-white shadow-sm'
@@ -396,25 +451,25 @@ function App() {
             </div>
           ) : currentView === 'privacy' ? (
             <div className="max-w-3xl mx-auto py-6 space-y-6">
-              <button onClick={() => { setCurrentView('home'); window.scrollTo(0,0); }} className="text-xs font-bold text-blue-500 hover:underline">&larr; Back to Home</button>
+              <button onClick={handleBackToHome} className="text-xs font-bold text-blue-500 hover:underline">&larr; Back to Home</button>
               <h2 className={`text-3xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>Privacy Policy for Naijablog</h2>
               <p className="text-sm text-slate-400">Last updated: September 2026</p>
               <div className={`prose max-w-none text-sm leading-relaxed space-y-4 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                <p>At Naijablog, accessible from naijablog.vercel.app, one of our main priorities is the privacy of our visitors. This Privacy Policy document contains types of information that is collected and recorded by Naijablog and how we use it.</p>
+                <p>At Naijablog, accessible from naijablog.vercel.app, one of our main priorities is the privacy of our visitors.</p>
               </div>
             </div>
           ) : currentView === 'terms' ? (
             <div className="max-w-3xl mx-auto py-6 space-y-6">
-              <button onClick={() => { setCurrentView('home'); window.scrollTo(0,0); }} className="text-xs font-bold text-blue-500 hover:underline">&larr; Back to Home</button>
+              <button onClick={handleBackToHome} className="text-xs font-bold text-blue-500 hover:underline">&larr; Back to Home</button>
               <h2 className={`text-3xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>Terms of Service</h2>
               <p className="text-sm text-slate-400">Last updated: September 2026</p>
               <div className={`prose max-w-none text-sm leading-relaxed space-y-4 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                <p>Welcome to Naijablog! These terms and conditions outline the rules and regulations for the use of Naijablog's Website.</p>
+                <p>Welcome to Naijablog! These terms and conditions outline the rules and regulations for using our website.</p>
               </div>
             </div>
           ) : currentView === 'contact' ? (
             <div className="max-w-3xl mx-auto py-6 space-y-6">
-              <button onClick={() => { setCurrentView('home'); window.scrollTo(0,0); }} className="text-xs font-bold text-blue-500 hover:underline">&larr; Back to Home</button>
+              <button onClick={handleBackToHome} className="text-xs font-bold text-blue-500 hover:underline">&larr; Back to Home</button>
               <h2 className={`text-3xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>Contact Us</h2>
               <p className="text-sm text-slate-400">Get in touch with our team</p>
               <div className={`prose max-w-none text-sm leading-relaxed space-y-4 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
@@ -448,7 +503,7 @@ function App() {
                 </form>
 
                 <button
-                  onClick={() => { setIsAdmin(false); setCurrentView('home'); }}
+                  onClick={handleBackToHome}
                   className="mt-6 text-xs text-slate-400 hover:text-white font-medium"
                 >
                   &larr; Return to Homepage
@@ -463,7 +518,7 @@ function App() {
                   <p className="text-xs text-slate-400 mt-0.5">Publish new stories, edit existing records, and manage content.</p>
                 </div>
                 <button 
-                  onClick={() => { setIsAdmin(false); setAdminAuthenticated(false); setCurrentView('home'); }}
+                  onClick={handleBackToHome}
                   className="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition-all border border-slate-700"
                 >
                   &larr; Log Out & Exit
@@ -489,7 +544,7 @@ function App() {
               <form onSubmit={handleSaveArticle} className={`p-6 md:p-8 rounded-2xl border mb-12 shadow-sm space-y-6 ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="flex justify-between items-center">
                   <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                    {editingId ? '✏️ Edit Article' : '✨ Publish New Article'}
+                    {editingId ? '✏️️ Edit Article' : '✨ Publish New Article'}
                   </h3>
                   {editingId && (
                     <button
@@ -648,7 +703,7 @@ function App() {
           ) : currentArticle ? (
             <article className="max-w-3xl mx-auto py-4">
               <button 
-                onClick={() => { setCurrentArticle(null); window.scrollTo(0,0); }}
+                onClick={handleBackToHome}
                 className="mb-8 text-blue-500 hover:text-blue-400 text-xs font-bold tracking-wider uppercase transition-colors flex items-center gap-2"
               >
                 &larr; Back to all stories
@@ -659,7 +714,7 @@ function App() {
                   {currentArticle.category}
                 </span>
                 <div className="flex items-center gap-4 text-xs text-slate-400 font-semibold">
-                  <span>👁️ {currentArticle.views || 1} views</span>
+                  <span>👁 {currentArticle.views || 1} views</span>
                   <button 
                     onClick={(e) => handleLike(currentArticle, e)}
                     className="flex items-center gap-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 px-3 py-1 rounded-full transition-colors border border-red-500/20"
@@ -675,7 +730,11 @@ function App() {
 
               <div className={`flex items-center justify-between text-xs text-slate-400 border-y py-4 mb-8 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
                 <span>By <strong className={darkMode ? 'text-slate-200' : 'text-slate-800'}>{currentArticle.author || 'Editorial Team'}</strong></span>
-                <span>{currentArticle.created_at ? new Date(currentArticle.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''} &bull; {calculateReadTime(currentArticle.content)}</span>
+                <span>
+                  {currentArticle.created_at 
+                    ? new Date(currentArticle.created_at).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) 
+                    : ''} &bull; {calculateReadTime(currentArticle.content)}
+                </span>
               </div>
 
               {currentArticle.image_url && (
@@ -705,14 +764,14 @@ function App() {
                   <button 
                     onClick={() => {
                       navigator.clipboard.writeText(window.location.href);
-                      alert('Link copied to clipboard!');
+                      alert('Direct article link copied to clipboard!');
                     }}
                     className={`px-3 py-1.5 rounded text-xs font-bold border transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'}`}
                   >
                     🔗 Copy Link
                   </button>
                   <a 
-                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(currentArticle.title + ' - Read on Naijablog')}`} 
+                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(currentArticle.title + ' - Read on Naijablog: ' + window.location.href)}`} 
                     target="_blank" 
                     rel="noreferrer"
                     className="px-3 py-1.5 bg-green-600 text-white rounded text-xs font-bold hover:bg-green-700 transition-colors"
@@ -720,7 +779,7 @@ function App() {
                     WhatsApp
                   </a>
                   <a 
-                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(currentArticle.title)}`} 
+                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(currentArticle.title)}&url=${encodeURIComponent(window.location.href)}`} 
                     target="_blank" 
                     rel="noreferrer"
                     className="px-3 py-1.5 bg-sky-500 text-white rounded text-xs font-bold hover:bg-sky-600 transition-colors"
@@ -855,10 +914,10 @@ function App() {
             <p className="text-slate-500">Journalism & Perspectives across Nigeria.</p>
           </div>
           <div className="flex flex-wrap gap-6 text-slate-300 font-medium">
-            <button onClick={() => { setCurrentView('home'); setIsAdmin(true); window.scrollTo(0,0); }} className="hover:text-blue-400 transition-colors">Admin Portal</button>
-            <button onClick={() => { setCurrentView('privacy'); window.scrollTo(0,0); }} className="hover:text-blue-400 transition-colors">Privacy Policy</button>
-            <button onClick={() => { setCurrentView('terms'); window.scrollTo(0,0); }} className="hover:text-blue-400 transition-colors">Terms of Service</button>
-            <button onClick={() => { setCurrentView('contact'); window.scrollTo(0,0); }} className="hover:text-blue-400 transition-colors">Contact Us</button>
+            <button onClick={() => navigateToView('admin')} className="hover:text-blue-400 transition-colors">Admin Portal</button>
+            <button onClick={() => navigateToView('privacy')} className="hover:text-blue-400 transition-colors">Privacy Policy</button>
+            <button onClick={() => navigateToView('terms')} className="hover:text-blue-400 transition-colors">Terms of Service</button>
+            <button onClick={() => navigateToView('contact')} className="hover:text-blue-400 transition-colors">Contact Us</button>
           </div>
         </div>
         <div className="border-t border-slate-800/80 py-6 text-center text-slate-500 text-[11px]">
