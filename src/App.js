@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import ContactForm from './ContactForm';
 
 const supabaseUrl = 'https://szzflseeqnhjphmooqfp.supabase.co';
 const supabaseKey = 'sb_publishable_KB4PTa3Zl6TNXcVL0jOL3g_ovbXv4Dd';
@@ -484,14 +485,7 @@ function App() {
               </div>
             </div>
           ) : currentView === 'contact' ? (
-            <div className="max-w-3xl mx-auto py-6 space-y-6">
-              <button onClick={handleBackToHome} className="text-xs font-bold text-blue-500 hover:underline">&larr; Back to Home</button>
-              <h2 className={`text-3xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>Contact Us</h2>
-              <p className="text-sm text-slate-400">Get in touch with our team</p>
-              <div className={`prose max-w-none text-sm leading-relaxed space-y-4 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                <p>We would love to hear from you! Reach out to our editorial team at <strong className={darkMode ? 'text-white' : 'text-slate-900'}>support@naijablog.vercel.app</strong>.</p>
-              </div>
-            </div>
+            <ContactForm darkMode={darkMode} handleBackToHome={handleBackToHome} />
           ) : isAdmin && !adminAuthenticated ? (
             <div className="max-w-md mx-auto py-16">
               <div className={`p-8 rounded-2xl border shadow-sm text-center ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
@@ -690,26 +684,13 @@ function App() {
                 <div className={`divide-y max-h-96 overflow-y-auto ${darkMode ? 'divide-slate-800' : 'divide-slate-100'}`}>
                   {articles.map((art) => (
                     <div key={art.id} className={`p-4 flex items-center justify-between gap-4 transition-colors ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
-                      <div className="min-w-0 flex items-center gap-3">
-                        {art.image_url && <img src={art.image_url} alt="" className="w-10 h-10 object-cover rounded shrink-0" />}
-                        <div className="min-w-0">
-                          <h4 className={`font-bold text-sm truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>{art.title}</h4>
-                          <p className="text-xs text-slate-400">{art.category} &bull; 👁️ {art.views || 0} views &bull; ❤️ {art.likes || 0} likes</p>
-                        </div>
+                      <div className="min-w-0">
+                        <p className={`text-sm font-bold truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>{art.title}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{art.category} • {new Date(art.created_at).toLocaleDateString()}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => handleEditClick(art)}
-                          className="px-3 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 rounded text-xs font-bold transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteArticle(art.id)}
-                          className="px-3 py-1.5 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded text-xs font-bold transition-colors"
-                        >
-                          Delete
-                        </button>
+                        <button onClick={() => handleEditClick(art)} className="px-3 py-1.5 bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white rounded text-xs font-bold transition-all">Edit</button>
+                        <button onClick={() => handleDeleteArticle(art.id)} className="px-3 py-1.5 bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white rounded text-xs font-bold transition-all">Delete</button>
                       </div>
                     </div>
                   ))}
@@ -717,227 +698,137 @@ function App() {
               </div>
             </div>
           ) : currentArticle ? (
-            <article className="max-w-3xl mx-auto py-4">
-              <button 
-                onClick={handleBackToHome}
-                className="mb-8 text-blue-500 hover:text-blue-400 text-xs font-bold tracking-wider uppercase transition-colors flex items-center gap-2"
-              >
-                &larr; Back to all stories
-              </button>
-
-              <div className="flex items-center justify-between mb-4">
-                <span className="inline-block text-xs font-bold text-blue-400 bg-blue-600/10 px-3 py-1 rounded-md uppercase tracking-widest border border-blue-500/20">
-                  {currentArticle.category}
-                </span>
-                <div className="flex items-center gap-4 text-xs text-slate-400 font-semibold">
-                  <span>👁 {currentArticle.views || 1} views</span>
-                  <button 
-                    onClick={(e) => handleLike(currentArticle, e)}
-                    className="flex items-center gap-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 px-3 py-1 rounded-full transition-colors border border-red-500/20"
-                  >
-                    ❤️ {currentArticle.likes || 0} Likes
-                  </button>
-                </div>
-              </div>
-
-              <h2 className={`text-3xl md:text-5xl font-extrabold mb-6 leading-tight tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                {currentArticle.title}
-              </h2>
-
-              <div className={`flex items-center justify-between text-xs text-slate-400 border-y py-4 mb-8 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                <span>By <strong className={darkMode ? 'text-slate-200' : 'text-slate-800'}>{currentArticle.author || 'Editorial Team'}</strong></span>
-                <span>
-                  {currentArticle.created_at 
-                    ? new Date(currentArticle.created_at).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) 
-                    : ''} &bull; {calculateReadTime(currentArticle.content)}
-                </span>
-              </div>
-
+            <div className="max-w-3xl mx-auto py-6 space-y-6">
+              <button onClick={handleBackToHome} className="text-xs font-bold text-blue-500 hover:underline">&larr; Back to Home</button>
+              <h2 className={`text-3xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>{currentArticle.title}</h2>
+              <p className="text-xs text-slate-400">{currentArticle.category} • By {currentArticle.author} • {new Date(currentArticle.created_at).toLocaleDateString()}</p>
               {currentArticle.image_url && (
-                <div className={`mb-10 rounded-2xl overflow-hidden border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
-                  <img src={currentArticle.image_url} alt={currentArticle.title} className="w-full object-cover max-h-[480px]" />
-                </div>
+                <img src={currentArticle.image_url} alt={currentArticle.title} className="w-full h-80 object-cover rounded-2xl shadow-sm" />
               )}
-
-              <div className={`prose max-w-none text-lg leading-relaxed space-y-6 whitespace-pre-line font-normal ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+              <div className={`prose max-w-none text-base leading-relaxed space-y-4 whitespace-pre-wrap ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                 {currentArticle.content}
               </div>
-
-              {/* Social Share & Like Footer */}
-              <div className={`mt-12 pt-8 border-t flex flex-col md:flex-row items-center justify-between gap-4 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold uppercase text-slate-400">Enjoyed this story?</span>
-                  <button 
-                    onClick={(e) => handleLike(currentArticle, e)}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-all flex items-center gap-2 shadow-sm"
-                  >
-                    ❤️ Like Article ({currentArticle.likes || 0})
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase text-slate-400 mr-2">Share:</span>
-                  <button 
-                    onClick={() => {
-                      navigator.clipboard.writeText(window.location.href);
-                      alert('Unique article link copied to clipboard!');
-                    }}
-                    className={`px-3 py-1.5 rounded text-xs font-bold border transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'}`}
-                  >
-                    🔗 Copy Link
-                  </button>
-                  <a 
-                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(currentArticle.title + ' - Read on Naijablog: ' + window.location.href)}`} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="px-3 py-1.5 bg-green-600 text-white rounded text-xs font-bold hover:bg-green-700 transition-colors"
-                  >
-                    WhatsApp
-                  </a>
-                  <a 
-                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(currentArticle.title)}&url=${encodeURIComponent(window.location.href)}`} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="px-3 py-1.5 bg-sky-500 text-white rounded text-xs font-bold hover:bg-sky-600 transition-colors"
-                  >
-                    Twitter / X
-                  </a>
-                </div>
+              <div className="flex items-center gap-4 pt-6 border-t border-slate-800">
+                <button onClick={(e) => handleLike(currentArticle, e)} className="px-4 py-2 bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white rounded-lg text-xs font-bold transition-all">
+                  ❤️ Like ({currentArticle.likes || 0})
+                </button>
+                <span className="text-xs text-slate-400">👁️ {currentArticle.views || 0} views</span>
               </div>
-            </article>
+            </div>
           ) : (
-            <>
-              {selectedCategory === 'All' && !searchQuery && featuredArticle && (
+            <div className="space-y-12">
+              {/* Featured Hero Story */}
+              {featuredArticle && selectedCategory === 'All' && searchQuery === '' && (
                 <div 
                   onClick={() => handleArticleClick(featuredArticle)}
-                  className={`mb-16 rounded-3xl overflow-hidden shadow-2xl grid md:grid-cols-2 cursor-pointer group transition-transform duration-300 hover:scale-[1.01] border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-900 text-white border-transparent'}`}
+                  className={`cursor-pointer group rounded-3xl border overflow-hidden grid md:grid-cols-2 gap-6 items-center p-6 md:p-8 transition-all hover:shadow-md ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
                 >
-                  <div className="p-8 md:p-12 flex flex-col justify-between">
-                    <div>
-                      <span className="inline-block px-3 py-1 text-[10px] font-bold bg-blue-600 text-white rounded-md mb-6 uppercase tracking-widest">
-                        Featured Story
-                      </span>
-                      <h2 className="text-2xl md:text-4xl font-bold mb-4 group-hover:text-blue-400 transition-colors leading-snug text-white">
-                        {featuredArticle.title}
-                      </h2>
-                      <p className="text-slate-400 mb-8 line-clamp-3 text-sm leading-relaxed">{featuredArticle.excerpt || featuredArticle.content}</p>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-slate-400 border-t border-slate-800 pt-5">
-                      <span className="text-slate-300">{featuredArticle.author || 'Editorial'} &bull; 👁️ {featuredArticle.views || 0}</span>
-                      <span className="font-bold text-white group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">Read article &rarr;</span>
-                    </div>
-                  </div>
-                  {featuredArticle.image_url ? (
-                    <div className="h-72 md:h-auto bg-slate-800 overflow-hidden">
-                      <img src={featuredArticle.image_url} alt={featuredArticle.title} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                  ) : (
-                    <div className="bg-slate-800 flex items-center justify-center p-8 text-slate-500 italic">
-                      Naijablog
+                  {featuredArticle.image_url && (
+                    <div className="overflow-hidden rounded-2xl h-64 md:h-80">
+                      <img src={featuredArticle.image_url} alt={featuredArticle.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     </div>
                   )}
+                  <div className="space-y-4">
+                    <span className="px-3 py-1 bg-blue-600 text-white rounded-full text-[10px] font-bold uppercase tracking-wider">
+                      Featured • {featuredArticle.category}
+                    </span>
+                    <h2 className={`text-2xl md:text-3xl font-black group-hover:text-blue-500 transition-colors ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                      {featuredArticle.title}
+                    </h2>
+                    <p className="text-sm text-slate-400 line-clamp-3">
+                      {featuredArticle.excerpt || featuredArticle.content}
+                    </p>
+                    <div className="flex items-center justify-between pt-2 text-xs text-slate-400 font-medium">
+                      <span>By {featuredArticle.author || 'Idongesit'}</span>
+                      <span>{calculateReadTime(featuredArticle.content)} read</span>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              <div className={`flex justify-between items-center mb-8 border-b pb-4 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                <h3 className={`text-xl font-bold tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                  {selectedCategory === 'All' ? 'Latest Stories' : `${selectedCategory}`}
+              {/* Articles Grid */}
+              <div>
+                <h3 className={`text-xl font-black mb-6 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                  {selectedCategory === 'All' ? 'Latest Stories' : `${selectedCategory} Stories`}
+                  {searchQuery && ` matching "${searchQuery}"`}
                 </h3>
-                <span className="text-xs text-slate-400 font-medium">
-                  {filteredArticles.length} stories available
-                </span>
-              </div>
 
-              {filteredArticles.length === 0 ? (
-                <div className={`text-center py-20 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-                  <p className="text-slate-400 text-sm">No stories found.</p>
-                </div>
-              ) : (
-                <>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {currentArticles.map((article) => (
-                      <article 
-                        key={article.id} 
-                        onClick={() => handleArticleClick(article)}
-                        className={`rounded-2xl border transition-all duration-300 flex flex-col justify-between overflow-hidden cursor-pointer group shadow-sm hover:shadow-md ${darkMode ? 'bg-slate-900 border-slate-800 hover:border-slate-700' : 'bg-white border-slate-200/80 hover:border-slate-300'}`}
+                {currentArticles.length === 0 ? (
+                  <div className="text-center py-20">
+                    <p className="text-slate-400 text-sm">No stories found.</p>
+                  </div>
+                ) : (
+                  <div className="grid md:grid-cols-3 gap-6">
+                    {currentArticles.map((art) => (
+                      <div 
+                        key={art.id}
+                        onClick={() => handleArticleClick(art)}
+                        className={`cursor-pointer group rounded-2xl border overflow-hidden flex flex-col justify-between transition-all hover:shadow-md ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
                       >
-                        {article.image_url ? (
-                          <div className={`h-48 overflow-hidden relative ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                            <img src={article.image_url} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                          </div>
-                        ) : (
-                          <div className={`h-48 flex items-center justify-center text-xs font-semibold ${darkMode ? 'bg-slate-800 text-slate-500' : 'bg-slate-100 text-slate-400'}`}>
-                            Naijablog
-                          </div>
-                        )}
-                        <div className="p-6 flex-1 flex flex-col justify-between">
-                          <div>
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="text-[10px] font-bold text-blue-400 bg-blue-600/10 border border-blue-500/20 px-2.5 py-0.5 rounded uppercase tracking-wider">
-                                {article.category || 'General'}
-                              </span>
-                              <span className="text-xs text-slate-400 font-medium">{calculateReadTime(article.content)}</span>
+                        <div>
+                          {art.image_url && (
+                            <div className="h-48 overflow-hidden">
+                              <img src={art.image_url} alt={art.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                             </div>
-                            <h4 className={`font-bold text-base transition-colors line-clamp-2 leading-snug mb-2 ${darkMode ? 'text-white group-hover:text-blue-400' : 'text-slate-900 group-hover:text-blue-600'}`}>
-                              {article.title}
+                          )}
+                          <div className="p-5 space-y-3">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500">{art.category}</span>
+                            <h4 className={`text-base font-bold group-hover:text-blue-500 transition-colors line-clamp-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                              {art.title}
                             </h4>
-                            <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed mb-4">
-                              {article.excerpt || article.content}
+                            <p className="text-xs text-slate-400 line-clamp-2">
+                              {art.excerpt || art.content}
                             </p>
                           </div>
-                          <div className={`flex items-center justify-between text-xs text-slate-400 border-t pt-4 mt-auto ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}>
-                            <span>👁️ {article.views || 0} &bull; ❤️ {article.likes || 0}</span>
-                            <span className={`font-semibold ${darkMode ? 'text-white group-hover:text-blue-400' : 'text-slate-900 group-hover:text-blue-600'}`}>Read &rarr;</span>
-                          </div>
                         </div>
-                      </article>
+                        <div className={`p-5 pt-0 flex items-center justify-between text-[11px] text-slate-400 font-medium border-t ${darkMode ? 'border-slate-800/60' : 'border-slate-200/60'} mt-4`}>
+                          <span>{art.author || 'Idongesit'}</span>
+                          <span>{calculateReadTime(art.content)} read</span>
+                        </div>
+                      </div>
                     ))}
                   </div>
+                )}
 
-                  {totalPages > 1 && (
-                    <div className="flex justify-center items-center gap-2 mt-12">
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center gap-2 mt-10">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                       <button
-                        onClick={() => { setCurrentPage(prev => Math.max(prev - 1, 1)); window.scrollTo(0,0); }}
-                        disabled={currentPage === 1}
-                        className={`px-4 py-2 disabled:opacity-50 rounded-lg text-xs font-bold transition-colors ${darkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'}`}
+                        key={page}
+                        onClick={() => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        className={`w-9 h-9 rounded-lg text-xs font-bold transition-all ${
+                          currentPage === page
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : darkMode
+                              ? 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                        }`}
                       >
-                        Previous
+                        {page}
                       </button>
-                      <span className="text-xs font-medium text-slate-400 px-3">
-                        Page {currentPage} of {totalPages}
-                      </span>
-                      <button
-                        onClick={() => { setCurrentPage(prev => Math.min(prev + 1, totalPages)); window.scrollTo(0,0); }}
-                        disabled={currentPage === totalPages}
-                        className={`px-4 py-2 disabled:opacity-50 rounded-lg text-xs font-bold transition-colors ${darkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'}`}
-                      >
-                        Next
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-            </>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </main>
       </div>
 
       {/* Footer */}
-      <footer className={`text-xs border-t mt-20 ${darkMode ? 'bg-slate-900 text-slate-400 border-slate-800' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>
-        <div className="max-w-7xl mx-auto px-6 py-12 flex flex-col md:flex-row justify-between items-center gap-6">
+      <footer className={`border-t py-12 px-6 mt-20 transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div>
-            <h2 className="text-lg font-black text-white mb-1">Naijablog<span className="text-blue-600">.</span></h2>
-            <p className="text-slate-500">Journalism & Perspectives across Nigeria.</p>
+            <h3 className={`text-xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>Naijablog<span className="text-blue-600">.</span></h3>
+            <p className="text-xs text-slate-400 mt-1">Journalism & Perspectives across Nigeria and beyond.</p>
           </div>
-          <div className="flex flex-wrap gap-6 text-slate-300 font-medium">
-            <button onClick={() => navigateToView('admin')} className="hover:text-blue-400 transition-colors">Admin Portal</button>
-            <button onClick={() => navigateToView('privacy')} className="hover:text-blue-400 transition-colors">Privacy Policy</button>
-            <button onClick={() => navigateToView('terms')} className="hover:text-blue-400 transition-colors">Terms of Service</button>
-            <button onClick={() => navigateToView('contact')} className="hover:text-blue-400 transition-colors">Contact Us</button>
+          <div className="flex items-center gap-6 text-xs font-bold">
+            <button onClick={() => navigateToView('privacy')} className="hover:text-blue-500 transition-colors">Privacy Policy</button>
+            <button onClick={() => navigateToView('terms')} className="hover:text-blue-500 transition-colors">Terms of Service</button>
+            <button onClick={() => navigateToView('contact')} className="hover:text-blue-500 transition-colors">Contact Us</button>
+            <button onClick={() => navigateToView('admin')} className="hover:text-blue-500 transition-colors">Admin Portal</button>
           </div>
-        </div>
-        <div className="border-t border-slate-800/80 py-6 text-center text-slate-500 text-[11px]">
-          &copy; {new Date().getFullYear()} Naijablog. All rights reserved.
         </div>
       </footer>
     </div>
