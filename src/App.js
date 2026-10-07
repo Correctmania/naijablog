@@ -58,6 +58,7 @@ function App() {
   const [newFeatured, setNewFeatured] = useState(false);
   const [newCustomDate, setNewCustomDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [copiedRef, setCopiedRef] = useState(false);
 
   const articlesPerPage = 9;
 
@@ -108,7 +109,6 @@ function App() {
       handleUrlRoute();
     }
 
-    // Listen to browser popstate (back/forward buttons)
     const onPopState = () => {
       const params = new URLSearchParams(window.location.search);
       const articleId = params.get('id');
@@ -350,6 +350,18 @@ function App() {
   const totalViewsAll = articles.reduce((acc, curr) => acc + (curr.views || 0), 0);
   const totalLikesAll = articles.reduce((acc, curr) => acc + (curr.likes || 0), 0);
 
+  const getReferralLink = (artId) => {
+    const refId = Math.random().toString(36).substring(2, 8);
+    return `${window.location.origin}${window.location.pathname}?id=${artId}&ref=${refId}`;
+  };
+
+  const handleCopyReferral = (artId) => {
+    const link = getReferralLink(artId);
+    navigator.clipboard.writeText(link);
+    setCopiedRef(true);
+    setTimeout(() => setCopiedRef(false), 2500);
+  };
+
   return (
     <div className={`min-h-screen font-sans transition-colors duration-300 flex flex-col justify-between ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-white text-slate-900'}`}>
       
@@ -388,6 +400,7 @@ function App() {
                   className="hover:text-blue-400 transition-colors flex items-center gap-2 whitespace-nowrap"
                 >
                   <span className="text-blue-500 font-bold">&bull;</span> {art.title}
+                  <span className="text-slate-500 text-[10px] ml-1">({art.views || 0} views)</span>
                 </span>
               ))}
             </div>
@@ -472,7 +485,8 @@ function App() {
               <h2 className={`text-3xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>Privacy Policy for Naijablog</h2>
               <p className="text-sm text-slate-400">Last updated: September 2026</p>
               <div className={`prose max-w-none text-sm leading-relaxed space-y-4 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                <p>At Naijablog, accessible from naijablog.vercel.app, one of our main priorities is the privacy of our visitors.</p>
+                <p>At Naijablog, accessible from naijablog.vercel.app, one of our main priorities is the privacy of our visitors. This Privacy Policy document contains types of information that is collected and recorded by Naijablog and how we use it.</p>
+                <p>Google, as a third-party vendor, uses cookies to serve ads on our site. Google's use of advertising cookies enables it and its partners to serve ads to our users based on their visit to our sites and/or other sites on the Internet.</p>
               </div>
             </div>
           ) : currentView === 'terms' ? (
@@ -686,7 +700,7 @@ function App() {
                     <div key={art.id} className={`p-4 flex items-center justify-between gap-4 transition-colors ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
                       <div className="min-w-0">
                         <p className={`text-sm font-bold truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>{art.title}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{art.category} • {new Date(art.created_at).toLocaleDateString()}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{art.category} • {new Date(art.created_at).toLocaleDateString()} • 👁️ {art.views || 0} views</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <button onClick={() => handleEditClick(art)} className="px-3 py-1.5 bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white rounded text-xs font-bold transition-all">Edit</button>
@@ -698,64 +712,158 @@ function App() {
               </div>
             </div>
           ) : currentArticle ? (
-            <div className="max-w-3xl mx-auto py-6 space-y-6">
-              <button onClick={handleBackToHome} className="text-xs font-bold text-blue-500 hover:underline">&larr; Back to Home</button>
-              <h2 className={`text-3xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>{currentArticle.title}</h2>
-              <p className="text-xs text-slate-400">{currentArticle.category} • By {currentArticle.author} • {new Date(currentArticle.created_at).toLocaleDateString()}</p>
-              {currentArticle.image_url && (
-                <img src={currentArticle.image_url} alt={currentArticle.title} className="w-full h-80 object-cover rounded-2xl shadow-sm" />
-              )}
-              <div className={`prose max-w-none text-base leading-relaxed space-y-4 whitespace-pre-wrap ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                {currentArticle.content}
-              </div>
-              <div className="flex items-center gap-4 pt-6 border-t border-slate-800">
-                <button onClick={(e) => handleLike(currentArticle, e)} className="px-4 py-2 bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white rounded-lg text-xs font-bold transition-all">
-                  ❤️ Like ({currentArticle.likes || 0})
-                </button>
-                <span className="text-xs text-slate-400">👁️ {currentArticle.views || 0} views</span>
-              </div>
+            /* Single Article Detailed View with Referral & AdSense slots */
+            <div className="max-w-4xl mx-auto space-y-8">
+              <button onClick={handleBackToHome} className="text-xs font-bold text-blue-500 hover:underline flex items-center gap-1">
+                &larr; Back to all stories
+              </button>
+
+              <article className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <span className="px-3 py-1 bg-blue-600/10 text-blue-500 rounded-md text-xs font-bold uppercase tracking-wider">
+                      {currentArticle.category}
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      {new Date(currentArticle.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </span>
+                    <span className="text-xs text-slate-400">•</span>
+                    <span className="text-xs text-slate-400">{calculateReadTime(currentArticle.content)} read</span>
+                    <span className="text-xs text-slate-400">•</span>
+                    <span className="text-xs font-bold text-green-500 flex items-center gap-1">
+                      👁️ {currentArticle.views || 0} Visitors
+                    </span>
+                  </div>
+
+                  <h1 className={`text-3xl md:text-5xl font-black leading-tight tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                    {currentArticle.title}
+                  </h1>
+
+                  <div className="flex items-center justify-between border-y py-4 my-6 border-slate-800/10 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm shadow">
+                        {currentArticle.author ? currentArticle.author[0].toUpperCase() : 'I'}
+                      </div>
+                      <div>
+                        <p className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{currentArticle.author || 'Idongesit'}</p>
+                        <p className="text-xs text-slate-400">Staff Writer & Editor</p>
+                      </div>
+                    </div>
+
+                    <button 
+                      onClick={(e) => handleLike(currentArticle, e)}
+                      className={`px-4 py-2 rounded-full border text-xs font-bold flex items-center gap-2 transition-all ${darkMode ? 'bg-slate-900 border-slate-800 text-red-400 hover:bg-slate-800' : 'bg-slate-50 border-slate-200 text-red-600 hover:bg-slate-100'}`}
+                    >
+                      ❤️ {currentArticle.likes || 0} Likes
+                    </button>
+                  </div>
+                </div>
+
+                {currentArticle.image_url && (
+                  <div className="rounded-2xl overflow-hidden shadow-md max-h-[500px] border border-slate-800/10 dark:border-slate-800">
+                    <img src={currentArticle.image_url} alt={currentArticle.title} className="w-full h-full object-cover" />
+                  </div>
+                )}
+
+                {/* Google AdSense In-Article Top Banner Slot */}
+                <div className={`p-4 rounded-xl border text-center text-xs text-slate-400 border-dashed ${darkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                  <span className="block font-semibold uppercase tracking-wider text-[10px] text-blue-500 mb-1">Sponsored Advertisement</span>
+                  <ins className="adsbygoogle" style={{display:'block'}} data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="XXXXXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins>
+                  <p className="italic">Advertisement Space (Google AdSense Responsive Unit)</p>
+                </div>
+
+                {/* Article Content */}
+                <div className={`prose max-w-none text-base md:text-lg leading-relaxed space-y-6 whitespace-pre-line ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  {currentArticle.content}
+                </div>
+
+                {/* Referral Link Sharing Box */}
+                <div className={`p-6 rounded-2xl border space-y-4 ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-blue-50/50 border-blue-100'}`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className={`text-sm font-black uppercase tracking-wider ${darkMode ? 'text-white' : 'text-slate-900'}`}>🔗 Share & Earn Referral Link</h4>
+                      <p className="text-xs text-slate-400 mt-0.5">Copy this unique article referral link to share with friends and track visits.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      readOnly 
+                      value={getReferralLink(currentArticle.id)} 
+                      className={`w-full px-3 py-2 rounded-lg border text-xs font-mono select-all ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-600'}`}
+                    />
+                    <button 
+                      onClick={() => handleCopyReferral(currentArticle.id)}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs shrink-0 transition-all shadow-sm"
+                    >
+                      {copiedRef ? '✓ Copied!' : 'Copy Link'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Google AdSense Footer Banner Slot */}
+                <div className={`p-4 rounded-xl border text-center text-xs text-slate-400 border-dashed ${darkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                  <span className="block font-semibold uppercase tracking-wider text-[10px] text-blue-500 mb-1">Sponsored Advertisement</span>
+                  <p className="italic">Advertisement Space (Google AdSense Multiplex Unit)</p>
+                </div>
+              </article>
             </div>
           ) : (
+            /* Home Feed View */
             <div className="space-y-12">
               {/* Featured Hero Story */}
               {featuredArticle && selectedCategory === 'All' && searchQuery === '' && (
                 <div 
                   onClick={() => handleArticleClick(featuredArticle)}
-                  className={`cursor-pointer group rounded-3xl border overflow-hidden grid md:grid-cols-2 gap-6 items-center p-6 md:p-8 transition-all hover:shadow-md ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
+                  className={`group cursor-pointer rounded-3xl border overflow-hidden grid md:grid-cols-2 gap-0 transition-all shadow-sm hover:shadow-md ${darkMode ? 'bg-slate-900 border-slate-800 hover:border-slate-700' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}
                 >
-                  {featuredArticle.image_url && (
-                    <div className="overflow-hidden rounded-2xl h-64 md:h-80">
+                  {featuredArticle.image_url ? (
+                    <div className="h-64 md:h-full min-h-[300px] overflow-hidden">
                       <img src={featuredArticle.image_url} alt={featuredArticle.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     </div>
+                  ) : (
+                    <div className="h-64 md:h-full bg-blue-600/10 flex items-center justify-center">
+                      <span className="text-4xl">📰</span>
+                    </div>
                   )}
-                  <div className="space-y-4">
-                    <span className="px-3 py-1 bg-blue-600 text-white rounded-full text-[10px] font-bold uppercase tracking-wider">
-                      Featured • {featuredArticle.category}
-                    </span>
-                    <h2 className={`text-2xl md:text-3xl font-black group-hover:text-blue-500 transition-colors ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                      {featuredArticle.title}
-                    </h2>
-                    <p className="text-sm text-slate-400 line-clamp-3">
-                      {featuredArticle.excerpt || featuredArticle.content}
-                    </p>
-                    <div className="flex items-center justify-between pt-2 text-xs text-slate-400 font-medium">
+
+                  <div className="p-8 flex flex-col justify-between space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="px-3 py-1 bg-blue-600 text-white rounded-md text-[10px] font-bold uppercase tracking-wider">
+                          ★ Featured Story
+                        </span>
+                        <span className="text-xs text-green-500 font-bold">👁️ {featuredArticle.views || 0} views</span>
+                      </div>
+                      <h2 className={`text-2xl md:text-3xl font-black tracking-tight group-hover:text-blue-500 transition-colors ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                        {featuredArticle.title}
+                      </h2>
+                      <p className={`text-sm leading-relaxed line-clamp-3 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                        {featuredArticle.excerpt || featuredArticle.content}
+                      </p>
+                    </div>
+
+                    <div className={`flex items-center justify-between pt-4 border-t text-xs ${darkMode ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
                       <span>By {featuredArticle.author || 'Idongesit'}</span>
-                      <span>{calculateReadTime(featuredArticle.content)} read</span>
+                      <span className="font-bold text-blue-500 group-hover:underline">Read Full Story &rarr;</span>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Articles Grid */}
+              {/* Article Grid */}
               <div>
-                <h3 className={`text-xl font-black mb-6 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                  {selectedCategory === 'All' ? 'Latest Stories' : `${selectedCategory} Stories`}
-                  {searchQuery && ` matching "${searchQuery}"`}
-                </h3>
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className={`text-xl font-black tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                    {selectedCategory === 'All' ? 'Latest Stories' : `${selectedCategory} Articles`}
+                  </h3>
+                  <p className="text-xs text-slate-400 font-medium">Showing {filteredArticles.length} results</p>
+                </div>
 
-                {currentArticles.length === 0 ? (
+                {filteredArticles.length === 0 ? (
                   <div className="text-center py-20">
-                    <p className="text-slate-400 text-sm">No stories found.</p>
+                    <p className="text-slate-400 text-sm">No stories found matching your criteria.</p>
                   </div>
                 ) : (
                   <div className="grid md:grid-cols-3 gap-6">
@@ -763,27 +871,38 @@ function App() {
                       <div 
                         key={art.id}
                         onClick={() => handleArticleClick(art)}
-                        className={`cursor-pointer group rounded-2xl border overflow-hidden flex flex-col justify-between transition-all hover:shadow-md ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
+                        className={`group cursor-pointer rounded-2xl border overflow-hidden flex flex-col justify-between transition-all hover:-translate-y-1 shadow-sm hover:shadow-md ${darkMode ? 'bg-slate-900 border-slate-800 hover:border-slate-700' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}
                       >
                         <div>
-                          {art.image_url && (
+                          {art.image_url ? (
                             <div className="h-48 overflow-hidden">
                               <img src={art.image_url} alt={art.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                             </div>
+                          ) : (
+                            <div className="h-48 bg-slate-800/10 flex items-center justify-center">
+                              <span className="text-2xl">📝</span>
+                            </div>
                           )}
-                          <div className="p-5 space-y-3">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500">{art.category}</span>
-                            <h4 className={`text-base font-bold group-hover:text-blue-500 transition-colors line-clamp-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+
+                          <div className="p-6 space-y-3">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-bold text-blue-500 uppercase tracking-wider">{art.category}</span>
+                              <span className="text-green-500 font-bold">👁️ {art.views || 0} views</span>
+                            </div>
+
+                            <h4 className={`text-lg font-bold leading-snug group-hover:text-blue-500 transition-colors line-clamp-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                               {art.title}
                             </h4>
-                            <p className="text-xs text-slate-400 line-clamp-2">
+
+                            <p className={`text-xs leading-relaxed line-clamp-2 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                               {art.excerpt || art.content}
                             </p>
                           </div>
                         </div>
-                        <div className={`p-5 pt-0 flex items-center justify-between text-[11px] text-slate-400 font-medium border-t ${darkMode ? 'border-slate-800/60' : 'border-slate-200/60'} mt-4`}>
-                          <span>{art.author || 'Idongesit'}</span>
-                          <span>{calculateReadTime(art.content)} read</span>
+
+                        <div className={`p-6 pt-0 flex items-center justify-between text-xs ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                          <span>{new Date(art.created_at).toLocaleDateString()}</span>
+                          <span className="font-bold text-blue-500 group-hover:underline">Read &rarr;</span>
                         </div>
                       </div>
                     ))}
@@ -793,19 +912,17 @@ function App() {
                 {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="flex justify-center items-center gap-2 mt-10">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
                       <button
-                        key={page}
-                        onClick={() => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        className={`w-9 h-9 rounded-lg text-xs font-bold transition-all ${
-                          currentPage === page
+                        key={pageNumber}
+                        onClick={() => { setCurrentPage(pageNumber); window.scrollTo({ top: 400, behavior: 'smooth' }); }}
+                        className={`w-10 h-10 rounded-lg text-xs font-bold transition-all ${
+                          currentPage === pageNumber
                             ? 'bg-blue-600 text-white shadow-sm'
-                            : darkMode
-                              ? 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
-                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                            : darkMode ? 'bg-slate-900 text-slate-300 border border-slate-800 hover:bg-slate-800' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                         }`}
                       >
-                        {page}
+                        {pageNumber}
                       </button>
                     ))}
                   </div>
@@ -817,18 +934,26 @@ function App() {
       </div>
 
       {/* Footer */}
-      <footer className={`border-t py-12 px-6 mt-20 transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+      <footer className={`border-t mt-20 transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+        <div className="max-w-7xl mx-auto px-6 py-12 flex flex-col md:flex-row justify-between items-center gap-6">
           <div>
-            <h3 className={`text-xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>Naijablog<span className="text-blue-600">.</span></h3>
-            <p className="text-xs text-slate-400 mt-1">Journalism & Perspectives across Nigeria and beyond.</p>
+            <h2 className={`text-xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+              Naijablog<span className="text-blue-600">.</span>
+            </h2>
+            <p className="text-xs mt-1">Independent Nigerian Journalism, Culture, and Perspectives.</p>
           </div>
-          <div className="flex items-center gap-6 text-xs font-bold">
+
+          <div className="flex flex-wrap gap-6 text-xs font-bold uppercase tracking-wider">
+            <button onClick={handleBackToHome} className="hover:text-blue-500 transition-colors">Home</button>
+            <button onClick={() => navigateToView('contact')} className="hover:text-blue-500 transition-colors">Contact</button>
             <button onClick={() => navigateToView('privacy')} className="hover:text-blue-500 transition-colors">Privacy Policy</button>
-            <button onClick={() => navigateToView('terms')} className="hover:text-blue-500 transition-colors">Terms of Service</button>
-            <button onClick={() => navigateToView('contact')} className="hover:text-blue-500 transition-colors">Contact Us</button>
-            <button onClick={() => navigateToView('admin')} className="hover:text-blue-500 transition-colors">Admin Portal</button>
+            <button onClick={() => navigateToView('terms')} className="hover:text-blue-500 transition-colors">Terms</button>
+            <button onClick={() => navigateToView('admin')} className="text-blue-500 hover:underline">Admin Portal</button>
           </div>
+        </div>
+
+        <div className={`border-t py-6 text-center text-xs ${darkMode ? 'border-slate-800/60 text-slate-500' : 'border-slate-200/60 text-slate-400'}`}>
+          &copy; {new Date().getFullYear()} Naijablog. All rights reserved. Built with React & Supabase.
         </div>
       </footer>
     </div>
