@@ -446,12 +446,17 @@ function App() {
                         <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)}
                           className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:border-blue-500 ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}>
                           <option value="Economy">Economy</option>
-                          <option value="Entertainment">Entertainment</option>
+                          <option value="Security">Security</option>
+                          <option value="Gist">Gist</option>
                           <option value="Politics">Politics</option>
-                          <option value="Health">Health</option>
+                          <option value="Entertainment">Entertainment</option>
+                          <option value="Sports">Sports</option>
                           <option value="Technology">Technology</option>
+                          <option value="Diaspora">Diaspora</option>
+                          <option value="Health">Health</option>
                           <option value="Jobs">Jobs</option>
                           <option value="Tribe">Tribe</option>
+                          <option value="Opinion">Opinion</option>
                         </select>
                       </div>
                     </div>
