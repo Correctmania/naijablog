@@ -57,6 +57,7 @@ function App() {
   const [newContent, setNewContent] = useState('');
   const [newFeatured, setNewFeatured] = useState(false);
   const [newCustomDate, setNewCustomDate] = useState('');
+  const [newVideoUrl, setNewVideoUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const articlesPerPage = 9;
@@ -81,12 +82,6 @@ function App() {
     }
   }
 
-  async function incrementViewsSilently(art) {
-    const updatedViews = (art.views || 0) + 1;
-    setArticles(prev => prev.map(a => a.id === art.id ? { ...a, views: updatedViews } : a));
-    await supabase.from('articles').update({ views: updatedViews }).eq('id', art.id);
-  }
-
   const handleAdminLogin = (e) => {
     e.preventDefault();
     if (passwordInput === ADMIN_SECRET) {
@@ -98,25 +93,42 @@ function App() {
     }
   };
 
-  const handleImageUpload = (e) => {
+  // Upgraded to Supabase Storage bucket upload for lightning-fast performance
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Please choose an image smaller than 2MB.');
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Please choose an image smaller than 5MB.');
       return;
     }
-    setUploadingImage(true);
-    const reader = new FileReader();
-    reader.onloadend = () => { setNewImageUrl(reader.result); setUploadingImage(false); };
-    reader.onerror = () => { alert('Failed to read image file.'); setUploadingImage(false); };
-    reader.readAsDataURL(file);
-  };
 
-  const handleLike = async (art, e) => {
-    e.stopPropagation();
-    const updatedLikes = (art.likes || 0) + 1;
-    setArticles(articles.map(a => a.id === art.id ? { ...a, likes: updatedLikes } : a));
-    await supabase.from('articles').update({ likes: updatedLikes }).eq('id', art.id);
+    try {
+      setUploadingImage(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('article-images')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        alert('Error uploading image: ' + uploadError.message);
+        return;
+      }
+
+      const { data: publicURLData } = supabase.storage
+        .from('article-images')
+        .getPublicUrl(filePath);
+
+      setNewImageUrl(publicURLData.publicUrl);
+    } catch (err) {
+      console.error('Unexpected upload error:', err);
+      alert('Failed to upload image.');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleArticleClick = (art) => {
@@ -156,7 +168,7 @@ function App() {
         const { error } = await supabase.from('articles').update({
           title: newTitle, category: newCategory, author: newAuthor,
           image_url: newImageUrl, excerpt: newExcerpt, content: newContent,
-          featured: newFeatured, created_at: finalTimestamp
+          featured: newFeatured, created_at: finalTimestamp, video_url: newVideoUrl
         }).eq('id', editingId);
         if (error) alert('Error updating: ' + error.message);
         else { alert('Article updated successfully!'); resetForm(); fetchArticles(); }
@@ -164,7 +176,8 @@ function App() {
         const { error } = await supabase.from('articles').insert([{
           title: newTitle, category: newCategory, author: newAuthor,
           image_url: newImageUrl, excerpt: newExcerpt, content: newContent,
-          featured: newFeatured, created_at: finalTimestamp, likes: 0, views: 0
+          featured: newFeatured, created_at: finalTimestamp, likes: 0, views: 0,
+          video_url: newVideoUrl
         }]);
         if (error) alert('Error creating: ' + error.message);
         else { alert('Article published successfully!'); resetForm(); fetchArticles(); }
@@ -186,6 +199,7 @@ function App() {
     setNewContent(art.content || '');
     setNewFeatured(art.featured || false);
     setNewCustomDate(formatForDatetimeLocal(art.created_at));
+    setNewVideoUrl(art.video_url || '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -197,6 +211,7 @@ function App() {
     setNewImageUrl('');
     setNewFeatured(false);
     setNewCustomDate('');
+    setNewVideoUrl('');
   };
 
   const handleDeleteArticle = async (id) => {
@@ -226,7 +241,6 @@ function App() {
   const totalViewsAll = articles.reduce((acc, curr) => acc + (curr.views || 0), 0);
   const totalLikesAll = articles.reduce((acc, curr) => acc + (curr.likes || 0), 0);
 
-  // Shared Header component
   const Header = ({ showSearch = true, showCategories = true }) => (
     <header className={`border-b sticky top-0 z-50 backdrop-blur-md transition-colors ${darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'}`}>
       <div className="max-w-7xl mx-auto px-6 py-5 flex flex-col md:flex-row justify-between items-center gap-4">
@@ -273,7 +287,6 @@ function App() {
     </header>
   );
 
-  // Shared Footer component
   const Footer = () => (
     <footer className={`border-t mt-20 transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
       <div className="max-w-7xl mx-auto px-6 py-12 flex flex-col md:flex-row justify-between items-center gap-6">
@@ -299,7 +312,6 @@ function App() {
 
   return (
     <div className={`min-h-screen font-sans transition-colors duration-300 flex flex-col justify-between ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-white text-slate-900'}`}>
-
       <style>{`
         @keyframes ticker {
           0% { transform: translate3d(0, 0, 0); }
@@ -310,8 +322,6 @@ function App() {
       `}</style>
 
       <Routes>
-
-        {/* ── Article Page Route ── */}
         <Route path="/article/:slug" element={
           <div className="flex flex-col min-h-screen">
             <Header showSearch={false} showCategories={false} />
@@ -322,10 +332,8 @@ function App() {
           </div>
         } />
 
-        {/* ── Home / All other views Route ── */}
         <Route path="/" element={
           <div className="flex flex-col min-h-screen">
-            {/* Ticker Bar */}
             <div className="bg-slate-900 text-slate-300 text-xs py-2.5 px-4 border-b border-slate-800 overflow-hidden flex items-center">
               <div className="bg-blue-600 text-white px-2.5 py-1 rounded font-bold uppercase tracking-wider text-[10px] shrink-0 z-10 mr-4 shadow-sm">
                 LIVE FEED
@@ -458,11 +466,11 @@ function App() {
                         <label className={`block text-xs font-bold uppercase mb-2 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Upload Image File</label>
                         <input type="file" accept="image/*" onChange={handleImageUpload}
                           className={`w-full text-xs file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 border rounded-lg cursor-pointer ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-500'}`} />
-                        {uploadingImage && <p className="text-[11px] text-blue-400 mt-1 font-medium">Processing image...</p>}
+                        {uploadingImage && <p className="text-[11px] text-blue-400 mt-1 font-medium">Uploading to storage bucket...</p>}
                         {newImageUrl && (
                           <div className="mt-2 flex items-center gap-3">
                             <img src={newImageUrl} alt="Preview" className="w-12 h-12 object-cover rounded border border-slate-700" />
-                            <span className="text-[11px] text-green-400 font-semibold">✓ Image loaded successfully</span>
+                            <span className="text-[11px] text-green-400 font-semibold">✓ Storage URL loaded</span>
                           </div>
                         )}
                       </div>
@@ -485,6 +493,13 @@ function App() {
                       <label className={`block text-xs font-bold uppercase mb-2 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Full Content</label>
                       <textarea required rows="6" value={newContent} onChange={(e) => setNewContent(e.target.value)} placeholder="Write full article here..."
                         className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:border-blue-500 ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}></textarea>
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-bold uppercase mb-2 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>YouTube Video URL (Optional)</label>
+                      <input type="text" value={newVideoUrl} onChange={(e) => setNewVideoUrl(e.target.value)}
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:border-blue-500 ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -528,12 +543,16 @@ function App() {
                           <img src={featuredArticle.image_url} alt={featuredArticle.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         </div>
                       ) : (
-                        <div className="h-64 md:h-full bg-blue-600/10 flex items-center justify-center"><span className="text-4xl">📰</span></div>
+                        <div className="h-64 md:h-full bg-blue-600/10 flex items-center justify-center">
+                          <span className="text-4xl">📰</span>
+                        </div>
                       )}
                       <div className="p-8 flex flex-col justify-between space-y-4">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="px-3 py-1 bg-blue-600 text-white rounded-md text-[10px] font-bold uppercase tracking-wider">★ Featured Story</span>
+                            <span className="px-3 py-1 bg-blue-600 text-white rounded-md text-[10px] font-bold uppercase tracking-wider">
+                              ★ Featured Story
+                            </span>
                             <span className="text-xs text-green-500 font-bold">👁️ {featuredArticle.views || 0} views</span>
                           </div>
                           <h2 className={`text-2xl md:text-3xl font-black tracking-tight group-hover:text-blue-500 transition-colors ${darkMode ? 'text-white' : 'text-slate-900'}`}>
@@ -560,7 +579,9 @@ function App() {
                     </div>
 
                     {filteredArticles.length === 0 ? (
-                      <div className="text-center py-20"><p className="text-slate-400 text-sm">No stories found matching your criteria.</p></div>
+                      <div className="text-center py-20">
+                        <p className="text-slate-400 text-sm">No stories found matching your criteria.</p>
+                      </div>
                     ) : (
                       <div className="grid md:grid-cols-3 gap-6">
                         {currentArticles.map((art) => (
@@ -572,7 +593,9 @@ function App() {
                                   <img src={art.image_url} alt={art.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                 </div>
                               ) : (
-                                <div className="h-48 bg-slate-800/10 flex items-center justify-center"><span className="text-2xl">📝</span></div>
+                                <div className="h-48 bg-slate-800/10 flex items-center justify-center">
+                                  <span className="text-2xl">📝</span>
+                                </div>
                               )}
                               <div className="p-6 space-y-3">
                                 <div className="flex items-center justify-between text-xs">
@@ -610,11 +633,9 @@ function App() {
                 </div>
               )}
             </main>
-
             <Footer />
           </div>
         } />
-
       </Routes>
     </div>
   );
