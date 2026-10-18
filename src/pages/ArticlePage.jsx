@@ -53,6 +53,18 @@ export default function ArticlePage({ darkMode }) {
 
     setArticle(data);
     incrementViews(data);
+    
+    // Safely trigger instant Google Indexing via your backend API route
+    try {
+      fetch('/api/trigger-indexing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: window.location.href }),
+      }).catch(err => console.error('Indexing trigger failed:', err));
+    } catch (e) {
+      console.error(e);
+    }
+
     setLoading(false);
     document.title = `${data.title} | Naijablog`;
   }
@@ -184,7 +196,7 @@ export default function ArticlePage({ darkMode }) {
               />
               <button
                 onClick={handleCopyLink}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs shrink-0"
+                className="px-4py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs shrink-0"
               >
                 {copied ? '✓ Copied!' : 'Copy'}
               </button>
