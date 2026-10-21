@@ -344,7 +344,6 @@ function App() {
                     <span key={idx} onClick={() => handleArticleClick(art)}
                       className="hover:text-blue-400 transition-colors flex items-center gap-2 whitespace-nowrap">
                       <span className="text-blue-500 font-bold">&bull;</span> {art.title}
-                      <span className="text-slate-500 text-[10px] ml-1">({art.views || 0} views)</span>
                     </span>
                   ))}
                 </div>
@@ -558,7 +557,6 @@ function App() {
                             <span className="px-3 py-1 bg-blue-600 text-white rounded-md text-[10px] font-bold uppercase tracking-wider">
                               ★ Featured Story
                             </span>
-                            <span className="text-xs text-green-500 font-bold">👁️ {featuredArticle.views || 0} views</span>
                           </div>
                           <h2 className={`text-2xl md:text-3xl font-black tracking-tight group-hover:text-blue-500 transition-colors ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                             {featuredArticle.title}
@@ -605,7 +603,6 @@ function App() {
                               <div className="p-6 space-y-3">
                                 <div className="flex items-center justify-between text-xs">
                                   <span className="font-bold text-blue-500 uppercase tracking-wider">{art.category}</span>
-                                  <span className="text-green-500 font-bold">👁️ {art.views || 0} views</span>
                                 </div>
                                 <h4 className={`text-lg font-bold leading-snug group-hover:text-blue-500 transition-colors line-clamp-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                                   {art.title}

@@ -77,15 +77,6 @@ export default function ArticlePage({ darkMode }) {
       .eq('id', art.id);
   }
 
-  const handleLike = async () => {
-    const updatedLikes = (article.likes || 0) + 1;
-    setArticle({ ...article, likes: updatedLikes });
-    await supabase
-      .from('articles')
-      .update({ likes: updatedLikes })
-      .eq('id', article.id);
-  };
-
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
@@ -128,8 +119,6 @@ export default function ArticlePage({ darkMode }) {
             </span>
             <span className="text-xs text-slate-400">•</span>
             <span className="text-xs text-slate-400">{calculateReadTime(article.content)} read</span>
-            <span className="text-xs text-slate-400">•</span>
-            <span className="text-xs font-bold text-green-500">👁️ {article.views || 0} views</span>
           </div>
 
           {/* Title */}
@@ -137,8 +126,8 @@ export default function ArticlePage({ darkMode }) {
             {article.title}
           </h1>
 
-          {/* Author & Like */}
-          <div className={`flex items-center justify-between border-y py-4 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+          {/* Author */}
+          <div className={`flex items-center border-y py-4 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm">
                 {article.author ? article.author[0].toUpperCase() : 'N'}
@@ -150,12 +139,6 @@ export default function ArticlePage({ darkMode }) {
                 <p className="text-xs text-slate-400">Staff Writer</p>
               </div>
             </div>
-            <button
-              onClick={handleLike}
-              className={`px-4 py-2 rounded-full border text-xs font-bold ${darkMode ? 'bg-slate-900 border-slate-800 text-red-400' : 'bg-slate-50 border-slate-200 text-red-600'}`}
-            >
-              ❤️ {article.likes || 0} Likes
-            </button>
           </div>
 
           {/* Featured Image */}
@@ -196,7 +179,7 @@ export default function ArticlePage({ darkMode }) {
               />
               <button
                 onClick={handleCopyLink}
-                className="px-4py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs shrink-0"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs shrink-0"
               >
                 {copied ? '✓ Copied!' : 'Copy'}
               </button>
