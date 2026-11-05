@@ -383,3 +383,104 @@ export function ContactUs() {
     </div>
   );
 }
+
+export function AboutUs() {
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-10 font-sans text-gray-800">
+      <h1 className="text-3xl font-bold mb-2">About Naijablog</h1>
+      <p className="text-sm text-gray-500 mb-8">Independent Nigerian Journalism, Culture & Perspectives</p>
+
+      <div className="space-y-8 leading-relaxed">
+        <section>
+          <p>
+            <strong>Naijablog</strong> is an independent digital media platform dedicated to delivering timely, 
+            insightful, and balanced coverage of news and stories that matter to Nigerians at home and in the diaspora.
+          </p>
+          <p className="mt-4">
+            We focus on politics, security, economy, technology, entertainment, culture, and everyday issues 
+            shaping life across Nigeria. Our goal is simple: to inform, engage, and give our readers a clearer 
+            understanding of the events that affect them.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold mb-3">Our Mission</h2>
+          <p>
+            To provide credible, accessible, and independent journalism that empowers Nigerians with accurate 
+            information and thoughtful perspectives — free from unnecessary noise and bias.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold mb-3">What We Cover</h2>
+          <ul className="list-disc pl-5 space-y-1.5">
+            <li>Politics & Governance</li>
+            <li>Security & National Affairs</li>
+            <li>Economy & Business</li>
+            <li>Technology & Innovation</li>
+            <li>Entertainment & Culture</li>
+            <li>Diaspora Stories</li>
+            <li>Opinion & Analysis</li>
+            <li>Sports, Health & Lifestyle</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold mb-3">Our Commitment</h2>
+          <p>
+            We are committed to:
+          </p>
+          <ul className="list-disc pl-5 mt-2 space-y-1.5">
+            <li>Publishing original and well-researched content</li>
+            <li>Maintaining editorial independence</li>
+            <li>Correcting errors promptly when they occur</li>
+            <li>Respecting the privacy and dignity of individuals</li>
+            <li>Serving the public interest above all else</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold mb-3">Who We Are</h2>
+          <p>
+            Naijablog is run by a team of writers, editors, and contributors who care deeply about Nigeria 
+            and the power of information. We believe that good journalism can help build a better society 
+            by holding power to account and amplifying important voices.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold mb-3">Get in Touch</h2>
+          <p>
+            We welcome news tips, feedback, corrections, partnership inquiries, and press releases.
+          </p>
+          <p className="mt-3">
+            <strong>Email:</strong>{' '}
+            <a 
+              href="mailto:contact@naijablog.com.ng" 
+              className="text-emerald-600 underline"
+            >
+              contact@naijablog.com.ng
+            </a>
+          </p>
+          <p className="mt-1">
+            <strong>Website:</strong>{' '}
+            <a 
+              href="https://www.naijablog.com.ng" 
+              className="text-emerald-600 underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              www.naijablog.com.ng
+            </a>
+          </p>
+        </section>
+
+        <section className="pt-4 border-t border-gray-200">
+          <p className="text-sm text-gray-600">
+            Thank you for reading Naijablog. We appreciate your trust and support.
+          </p>
+        </section>
+      </div>
+    </div>
+  );
+}

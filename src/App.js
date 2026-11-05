@@ -3,7 +3,7 @@ import { Routes, Route, useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import ArticlePage from './pages/ArticlePage';
 import { getArticleUrl } from './utils/slugify';
-import { PrivacyPolicy, TermsConditions, ContactUs } from './LegalPages';
+import { PrivacyPolicy, TermsConditions, ContactUs, AboutUs } from './LegalPages';
 
 const supabaseUrl = 'https://szzflseeqnhjphmooqfp.supabase.co';
 const supabaseKey = 'sb_publishable_KB4PTa3Zl6TNXcVL0jOL3g_ovbXv4Dd';
@@ -289,6 +289,7 @@ function App() {
         </div>
         <div className="flex flex-wrap gap-6 text-xs font-bold uppercase tracking-wider">
           <button onClick={handleBackToHome} className="hover:text-blue-500 transition-colors">Home</button>
+          <button onClick={() => navigateToView('/about')} className="hover:text-blue-500 transition-colors">About Us</button>
           <button onClick={() => navigateToView('/contact')} className="hover:text-blue-500 transition-colors">Contact</button>
           <button onClick={() => navigateToView('/privacy-policy')} className="hover:text-blue-500 transition-colors">Privacy Policy</button>
           <button onClick={() => navigateToView('/terms')} className="hover:text-blue-500 transition-colors">Terms</button>
@@ -313,10 +314,26 @@ function App() {
       `}</style>
 
       <Routes>
+        <Route path="/about" element={
+          <div className="flex flex-col min-h-screen">
+            <Header showSearch={false} showCategories={false} />
+            <main className="max-w-4xl mx-auto px-6 py-8 flex-1 w-full">
+              <button onClick={handleBackToHome} className="mb-6 inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 px-4 py-2 rounded-lg border border-blue-100 dark:border-slate-700 transition-all shadow-sm">
+                &larr; Back to Home
+              </button>
+              <AboutUs />
+            </main>
+            <Footer />
+          </div>
+        } />
+
         <Route path="/privacy-policy" element={
           <div className="flex flex-col min-h-screen">
             <Header showSearch={false} showCategories={false} />
-            <main className="flex-1">
+            <main className="max-w-4xl mx-auto px-6 py-8 flex-1 w-full">
+              <button onClick={handleBackToHome} className="mb-6 inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 px-4 py-2 rounded-lg border border-blue-100 dark:border-slate-700 transition-all shadow-sm">
+                &larr; Back to Home
+              </button>
               <PrivacyPolicy />
             </main>
             <Footer />
@@ -326,7 +343,10 @@ function App() {
         <Route path="/terms" element={
           <div className="flex flex-col min-h-screen">
             <Header showSearch={false} showCategories={false} />
-            <main className="flex-1">
+            <main className="max-w-4xl mx-auto px-6 py-8 flex-1 w-full">
+              <button onClick={handleBackToHome} className="mb-6 inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 px-4 py-2 rounded-lg border border-blue-100 dark:border-slate-700 transition-all shadow-sm">
+                &larr; Back to Home
+              </button>
               <TermsConditions />
             </main>
             <Footer />
@@ -336,7 +356,10 @@ function App() {
         <Route path="/contact" element={
           <div className="flex flex-col min-h-screen">
             <Header showSearch={false} showCategories={false} />
-            <main className="flex-1">
+            <main className="max-w-4xl mx-auto px-6 py-8 flex-1 w-full">
+              <button onClick={handleBackToHome} className="mb-6 inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 px-4 py-2 rounded-lg border border-blue-100 dark:border-slate-700 transition-all shadow-sm">
+                &larr; Back to Home
+              </button>
               <ContactUs />
             </main>
             <Footer />
