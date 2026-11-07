@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
+import AdsterraNativeBanner from '../components/AdsterraNativeBanner';
 
 const supabaseUrl = 'https://szzflseeqnhjphmooqfp.supabase.co';
 const supabaseKey = 'sb_publishable_KB4PTa3Zl6TNXcVL0jOL3g_ovbXv4Dd';
@@ -232,6 +233,9 @@ export default function ArticlePage({ darkMode }) {
               </a>
             </div>
           </div>
+
+          {/* Adsterra Native Banner */}
+          <AdsterraNativeBanner />
 
           {/* AdSense Slot Bottom */}
           <div className={`p-4 rounded-xl border text-center text-xs text-slate-400 border-dashed ${darkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
