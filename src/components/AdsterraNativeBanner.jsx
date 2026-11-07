@@ -13,13 +13,11 @@ export default function AdsterraNativeBanner() {
     const script = document.createElement('script');
     script.async = true;
     script.setAttribute('data-cfasync', 'false');
-    // Replace this URL with the exact src URL from your Adsterra "Get Ad Code" snippet
-    script.src = 'https://pl23456789.effectivegatecpm.com/YOUR_PLACEMENT_KEY/invoke.js';
+    script.src = 'https://bicea.org/21/ffc2e2ccb428145034451e06a3946756';
 
     container.appendChild(script);
 
     return () => {
-      // Cleanup on unmount
       if (container) {
         container.innerHTML = '';
       }
@@ -28,8 +26,7 @@ export default function AdsterraNativeBanner() {
 
   return (
     <div className="my-8 flex justify-center">
-      {/* Replace the ID below with the exact container ID from your Adsterra snippet */}
-      <div id="container-YOUR_PLACEMENT_KEY" ref={containerRef} className="w-full max-w-4xl" />
+      <div id="container-ffc2e2ccb428145034451e06a3946756" ref={containerRef} className="w-full max-w-4xl" />
     </div>
   );
 }
