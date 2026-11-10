@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
-import ArticlePage from './pages/ArticlePage';
+import ArticlePage from './ArticlePage';
 import { getArticleUrl } from './utils/slugify';
 import { PrivacyPolicy, TermsConditions, ContactUs, AboutUs } from './LegalPages';
 
@@ -28,7 +28,7 @@ function formatForDatetimeLocal(isoString) {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
-function App() {
+export default function App() {
   const navigate = useNavigate();
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -560,104 +560,109 @@ function App() {
                   </div>
                 </div>
               ) : (
-                /* Home Feed View */
-                <div className="space-y-12">
-                  {featuredArticle && selectedCategory === 'All' && searchQuery === '' && (
+                <div>
+                  {/* Hero Featured Story */}
+                  {featuredArticle && selectedCategory === 'All' && !searchQuery && (
                     <div onClick={() => handleArticleClick(featuredArticle)}
-                      className={`group cursor-pointer rounded-3xl border overflow-hidden transition-all duration-300 hover:shadow-xl grid md:grid-cols-12 gap-0 ${darkMode ? 'bg-slate-900 border-slate-800 hover:border-slate-700' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}>
-                      <div className="md:col-span-7 aspect-video md:aspect-auto overflow-hidden relative min-h-[300px]">
-                        <img src={featuredArticle.image_url || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80'}
-                          alt={featuredArticle.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                        <div className="absolute top-4 left-4 bg-blue-600 text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full tracking-wider shadow-md">
-                          FEATURED
+                      className={`group cursor-pointer rounded-3xl border overflow-hidden mb-12 grid md:grid-cols-12 gap-0 transition-all shadow-sm hover:shadow-md ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                      {featuredArticle.image_url && (
+                        <div className="md:col-span-7 h-72 md:h-[420px] overflow-hidden">
+                          <img src={featuredArticle.image_url} alt={featuredArticle.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         </div>
-                      </div>
-                      <div className="md:col-span-5 p-8 flex flex-col justify-between">
-                        <div className="space-y-4">
-                          <div className="flex items-center gap-2 text-xs font-bold text-blue-500 uppercase tracking-wider">
-                            <span>{featuredArticle.category}</span>
-                            <span>&bull;</span>
-                            <span className="text-slate-400 font-normal">{calculateReadTime(featuredArticle.content)} read</span>
+                      )}
+                      <div className="md:col-span-5 p-6 md:p-10 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center gap-3 mb-4">
+                            <span className="px-3 py-1 bg-blue-600 text-white rounded-md text-xs font-bold uppercase tracking-wider">
+                              {featuredArticle.category}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              {new Date(featuredArticle.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
                           </div>
-                          <h2 className={`text-2xl md:text-3xl font-black leading-tight group-hover:text-blue-500 transition-colors ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                          <h2 className={`text-2xl md:text-3xl font-black group-hover:text-blue-500 transition-colors leading-tight mb-4 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                             {featuredArticle.title}
                           </h2>
-                          <p className={`text-sm line-clamp-3 leading-relaxed ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                            {featuredArticle.excerpt || featuredArticle.content?.substring(0, 160) + '...'}
+                          <p className="text-slate-400 text-sm line-clamp-3 leading-relaxed">
+                            {featuredArticle.excerpt || featuredArticle.content}
                           </p>
                         </div>
-                        <div className="pt-6 border-t border-slate-200/20 flex items-center justify-between text-xs text-slate-400 font-medium">
-                          <span>By {featuredArticle.author || 'Editorial Team'}</span>
-                          <span>{new Date(featuredArticle.created_at).toLocaleDateString()}</span>
+                        <div className="flex items-center justify-between pt-6 mt-6 border-t border-slate-800/40 text-xs">
+                          <span className={`font-bold ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>By {featuredArticle.author || 'Naijablog'}</span>
+                          <span className="text-blue-500 font-bold group-hover:translate-x-1 transition-transform">Read Story &rarr;</span>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Articles Grid */}
-                  <div>
-                    <h3 className={`text-xl font-black mb-6 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                      <span>Latest Stories</span>
-                      <span className="text-xs font-normal text-slate-400">({filteredArticles.length} articles)</span>
+                  {/* Stories Grid */}
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className={`text-xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                      {selectedCategory === 'All' ? 'Latest Stories' : `${selectedCategory} Stories`}
+                      {searchQuery && <span className="text-xs font-normal text-slate-400 ml-2">matching "{searchQuery}"</span>}
                     </h3>
+                    <p className="text-xs text-slate-400 font-medium">{filteredArticles.length} stories found</p>
+                  </div>
 
-                    {currentArticles.length === 0 ? (
-                      <div className="text-center py-20 border rounded-2xl border-dashed border-slate-700">
-                        <p className="text-slate-400 text-sm">No stories found matching your filter.</p>
-                      </div>
-                    ) : (
-                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {currentArticles.map((art) => (
-                          <article key={art.id} onClick={() => handleArticleClick(art)}
-                            className={`group cursor-pointer rounded-2xl border overflow-hidden flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${darkMode ? 'bg-slate-900 border-slate-800 hover:border-slate-700' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
-                            <div>
-                              <div className="aspect-video overflow-hidden relative bg-slate-800">
-                                <img src={art.image_url || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80'}
-                                  alt={art.title}
-                                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                                <span className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold uppercase px-2.5 py-1 rounded">
+                  {currentArticles.length === 0 ? (
+                    <div className="text-center py-20 border border-dashed rounded-2xl border-slate-800">
+                      <p className="text-slate-400 text-sm font-medium">No stories found matching your criteria.</p>
+                      <button onClick={() => { setSelectedCategory('All'); setSearchQuery(''); }} className="mt-4 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg">
+                        Reset Filters
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid md:grid-cols-3 gap-8">
+                      {currentArticles.map((art) => (
+                        <div key={art.id} onClick={() => handleArticleClick(art)}
+                          className={`group cursor-pointer rounded-2xl border overflow-hidden flex flex-col justify-between transition-all hover:shadow-lg ${darkMode ? 'bg-slate-900 border-slate-800 hover:border-slate-700' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                          <div>
+                            {art.image_url && (
+                              <div className="h-48 overflow-hidden">
+                                <img src={art.image_url} alt={art.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                              </div>
+                            )}
+                            <div className="p-6">
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="px-2.5 py-0.5 bg-blue-600/10 text-blue-500 rounded text-[10px] font-bold uppercase tracking-wider">
                                   {art.category}
                                 </span>
+                                <span className="text-[11px] text-slate-400">
+                                  {new Date(art.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                </span>
                               </div>
-                              <div className="p-5 space-y-3">
-                                <h4 className={`font-extrabold text-lg line-clamp-2 leading-snug group-hover:text-blue-500 transition-colors ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                                  {art.title}
-                                </h4>
-                                <p className={`text-xs line-clamp-2 leading-relaxed ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                                  {art.excerpt || art.content?.substring(0, 100) + '...'}
-                                </p>
-                              </div>
+                              <h4 className={`text-lg font-bold group-hover:text-blue-500 transition-colors leading-snug mb-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                                {art.title}
+                              </h4>
+                              <p className="text-slate-400 text-xs line-clamp-2 leading-relaxed">
+                                {art.excerpt || art.content}
+                              </p>
                             </div>
-                            <div className="p-5 pt-0 flex items-center justify-between text-[11px] text-slate-400 font-medium">
-                              <span>{new Date(art.created_at).toLocaleDateString()}</span>
-                              <span>{calculateReadTime(art.content)} read</span>
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-                    )}
+                          </div>
+                          <div className={`px-6 py-4 border-t flex justify-between items-center text-xs ${darkMode ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
+                            <span className="font-medium">{art.author || 'Naijablog'}</span>
+                            <span className="text-blue-500 font-bold group-hover:translate-x-1 transition-transform">Read &rarr;</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                      <div className="flex justify-center items-center gap-2 mt-12">
-                        <button disabled={currentPage === 1} onClick={() => { setCurrentPage(currentPage - 1); window.scrollTo(0, 0); }}
-                          className="px-4 py-2 rounded-lg border text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-600 hover:text-white transition-all">
-                          Previous
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex justify-center items-center gap-2 mt-12">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button key={page} onClick={() => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                          className={`w-10 h-10 rounded-lg text-xs font-bold transition-all ${currentPage === page ? 'bg-blue-600 text-white shadow-sm' : darkMode ? 'bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                          {page}
                         </button>
-                        <span className="text-xs font-semibold px-4 text-slate-400">
-                          Page {currentPage} of {totalPages}
-                        </span>
-                        <button disabled={currentPage === totalPages} onClick={() => { setCurrentPage(currentPage + 1); window.scrollTo(0, 0); }}
-                          className="px-4 py-2 rounded-lg border text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-600 hover:text-white transition-all">
-                          Next
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </main>
+
             <Footer />
           </div>
         } />
@@ -665,5 +670,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
